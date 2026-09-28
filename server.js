@@ -35,8 +35,15 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// Start server
-app.listen(PORT, async () => {
-    await connectDB();
-    console.log(`🚀 Server running on port ${PORT}`);
-});
+// ═══════════════════════════════════════════
+// 🔥 VERCEL සඳහා - local එකේදී run වෙනවා, Vercel එකේදී export වෙනවා
+// ═══════════════════════════════════════════
+if (process.env.VERCEL !== '1') {
+    app.listen(PORT, async () => {
+        await connectDB();
+        console.log(`🚀 Server running on port ${PORT}`);
+        console.log(`📡 Web Auth API: ${process.env.WEB_AUTH_API}`);
+    });
+}
+
+export default app;
