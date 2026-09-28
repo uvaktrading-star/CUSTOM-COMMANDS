@@ -20,8 +20,4 @@
       "dest": "public/$1"
     }
   ],
-  "env": {
-    "FEATURES_MONGODB_URI": "@features_mongodb_uri",
-    "WEB_AUTH_API": "@web_auth_api"
-  }
 }
