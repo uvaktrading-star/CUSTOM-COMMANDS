@@ -383,4 +383,147 @@
                 const cmd = commands.find(c => c._id === id);
                 if (cmd) {
                     document.getElementById('pattern').value = cmd.pattern;
-                    document.getElementById('actionType').value = cmd
+                    document.getElementById('actionType').value = cmd.actionType;
+                    document.getElementById('response').value = cmd.response;
+                    document.getElementById('mediaUrl').value = cmd.mediaUrl || '';
+                    document.getElementById('description').value = cmd.description || '';
+                    document.getElementById('react').value = cmd.react || '⚡';
+                    document.getElementById('alias').value = (cmd.alias || []).join(', ');
+                }
+            } else {
+                document.getElementById('pattern').value = '';
+                document.getElementById('actionType').value = 'text';
+                document.getElementById('response').value = '';
+                document.getElementById('mediaUrl').value = '';
+                document.getElementById('description').value = '';
+                document.getElementById('react').value = '⚡';
+                document.getElementById('alias').value = '';
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('active');
+        }
+
+        // ═══════════════════════════════════════
+        // 🎯 Save Command
+        // ═══════════════════════════════════════
+        async function saveCommand() {
+            const id = document.getElementById('editId').value;
+            const pattern = document.getElementById('pattern').value.trim();
+            const actionType = document.getElementById('actionType').value;
+            const response = document.getElementById('response').value.trim();
+            const mediaUrl = document.getElementById('mediaUrl').value.trim();
+            const description = document.getElementById('description').value.trim();
+            const react = document.getElementById('react').value.trim();
+            const alias = document.getElementById('alias').value.split(',').map(a => a.trim()).filter(a => a);
+
+            if (!pattern) {
+                showToast('Pattern is required', 'error');
+                return;
+            }
+
+            const body = { pattern, actionType, response, mediaUrl, description, react, alias };
+
+            try {
+                const url = id ? `${API_URL}/${id}` : API_URL;
+                const method = id ? 'PUT' : 'POST';
+                
+                const res = await fetch(url, {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token || botPass}`,
+                        'x-bot-number': botId
+                    },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showToast(id ? 'Command updated!' : 'Command created!', 'success');
+                    closeModal();
+                    loadCommands();
+                } else {
+                    showToast(data.error || 'Failed to save', 'error');
+                }
+            } catch (e) {
+                showToast('Connection error', 'error');
+            }
+        }
+
+        function editCommand(id) { openModal(id); }
+
+        // ═══════════════════════════════════════
+        // 🎯 Toggle Command
+        // ═══════════════════════════════════════
+        async function toggleCommand(id) {
+            try {
+                const res = await fetch(`${API_URL}/${id}/toggle`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${token || botPass}`,
+                        'x-bot-number': botId
+                    }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('Command status updated', 'success');
+                    loadCommands();
+                }
+            } catch (e) {
+                showToast('Connection error', 'error');
+            }
+        }
+
+        // ═══════════════════════════════════════
+        // 🎯 Delete Command
+        // ═══════════════════════════════════════
+        async function deleteCommand(id) {
+            if (!confirm('Are you sure you want to delete this command?')) return;
+            
+            try {
+                const res = await fetch(`${API_URL}/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token || botPass}`,
+                        'x-bot-number': botId
+                    }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('Command deleted', 'success');
+                    loadCommands();
+                }
+            } catch (e) {
+                showToast('Connection error', 'error');
+            }
+        }
+
+        // ═══════════════════════════════════════
+        // 🎯 Logout
+        // ═══════════════════════════════════════
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('bot_id');
+            localStorage.removeItem('bot_pass');
+            localStorage.removeItem('bot_settings');
+            localStorage.removeItem('bot_user');
+            window.location.href = 'login.html';
+        }
+
+        // ═══════════════════════════════════════
+        // 🎯 Toast
+        // ═══════════════════════════════════════
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Load on start
+        loadCommands();
+    </script>
+</body>
+</html>
