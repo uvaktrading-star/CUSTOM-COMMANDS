@@ -25,7 +25,15 @@ router.get('/', authMiddleware, async (req, res) => {
 router.post('/', authMiddleware, async (req, res) => {
     try {
         await connectDB();
-        const { pattern, response, actionType, mediaUrl, description, react, alias } = req.body;
+        const {
+            pattern, alias, actionType, react, description,
+            // text
+            response,
+            // media
+            mediaType, mediaUrl, mediaCaption,
+            // api
+            apiMethod, apiUrl, apiResponsePaths, apiImageUrl, apiCaption
+        } = req.body;
 
         if (!pattern) {
             return res.status(400).json({ success: false, error: 'Pattern is required' });
@@ -43,12 +51,19 @@ router.post('/', authMiddleware, async (req, res) => {
         const command = await UserCommand.create({
             botNumber: req.botNumber,
             pattern: pattern.toLowerCase(),
-            response: response || '',
+            alias: alias || [],
             actionType: actionType || 'text',
-            mediaUrl: mediaUrl || null,
-            description: description || '',
             react: react || '⚡',
-            alias: alias || []
+            description: description || '',
+            response: response || '',
+            mediaType: mediaType || null,
+            mediaUrl: mediaUrl || null,
+            mediaCaption: mediaCaption || '',
+            apiMethod: apiMethod || 'GET',
+            apiUrl: apiUrl || null,
+            apiResponsePaths: apiResponsePaths || [],
+            apiImageUrl: apiImageUrl || null,
+            apiCaption: apiCaption || ''
         });
 
         res.json({ success: true, message: 'Command created', command });
@@ -57,7 +72,6 @@ router.post('/', authMiddleware, async (req, res) => {
         res.status(500).json({ success: false, error: 'Server error' });
     }
 });
-
 // ═══════════════════════════════════════════
 // 🎯 UPDATE COMMAND
 // ═══════════════════════════════════════════
@@ -73,7 +87,14 @@ router.put('/:id', authMiddleware, async (req, res) => {
             return res.status(404).json({ success: false, error: 'Command not found' });
         }
 
-        const allowed = ['pattern', 'response', 'actionType', 'mediaUrl', 'description', 'react', 'alias', 'enabled'];
+        const allowed = [
+            'pattern', 'alias', 'actionType', 'react', 'description',
+            'response',
+            'mediaType', 'mediaUrl', 'mediaCaption',
+            'apiMethod', 'apiUrl', 'apiResponsePaths', 'apiImageUrl', 'apiCaption',
+            'enabled'
+        ];
+        
         allowed.forEach(key => {
             if (req.body[key] !== undefined) command[key] = req.body[key];
         });
