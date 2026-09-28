@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZANTA-MD | Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a0f;
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(8, 15, 30, 0.65);
+            border-radius: 20px;
+            border: 1px solid rgba(0, 150, 255, 0.15);
+        }
+        .header h1 {
+            font-size: 1.3rem;
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .header .user-info {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.4);
+            margin-top: 4px;
+        }
+        .btn {
+            padding: 12px 24px;
+            border-radius: 60px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            color: #000;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.3);
+        }
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .btn-danger:hover { background: rgba(239, 68, 68, 0.3); }
+        .btn-sm { padding: 8px 14px; font-size: 0.7rem; }
+        .commands-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .command-card {
+            background: rgba(8, 15, 30, 0.65);
+            backdrop-filter: blur(22px);
+            border: 1px solid rgba(0, 150, 255, 0.15);
+            border-radius: 20px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+        .command-card:hover {
+            border-color: rgba(0, 212, 255, 0.3);
+            transform: translateY(-4px);
+        }
+        .command-card .pattern {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #3b82f6;
+            margin-bottom: 8px;
+        }
+        .command-card .response {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 12px;
+            word-break: break-word;
+        }
+        .command-card .meta {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-active { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .badge-inactive { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .badge-type { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .command-card .actions { display: flex; gap: 8px; }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: rgba(8, 15, 30, 0.95);
+            border: 1px solid rgba(0, 150, 255, 0.2);
+            border-radius: 24px;
+            padding: 32px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal h2 {
+            font-size: 1.2rem;
+            margin-bottom: 24px;
+            color: #3b82f6;
+        }
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 0.9rem;
+            outline: none;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+        }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        .modal-actions .btn { flex: 1; }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255,255,255,0.3);
+            grid-column: 1/-1;
+        }
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            color: rgba(59, 130, 246, 0.3);
+        }
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 16px 24px;
+            background: rgba(8, 15, 30, 0.95);
+            border: 1px solid rgba(0, 150, 255, 0.3);
+            border-radius: 16px;
+            color: #fff;
+            font-size: 0.85rem;
+            z-index: 200;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.4s ease;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { border-color: rgba(34, 197, 94, 0.5); }
+        .toast.error { border-color: rgba(239, 68, 68, 0.5); }
+        @media (max-width: 600px) {
+            .header { flex-direction: column; gap: 16px; text-align: center; }
+            .commands-grid { grid-template-columns: 1fr; }
+            .modal { padding: 24px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1><i class="fas fa-robot"></i> Command Dashboard</h1>
+                <div class="user-info" id="userInfo">Loading...</div>
+            </div>
+            <div>
+                <button class="btn btn-primary" onclick="openModal()">
+                    <i class="fas fa-plus"></i> Add Command
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="logout()" style="margin-left: 10px;">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </div>
+
+        <!-- Commands Grid -->
+        <div id="commandsGrid" class="commands-grid"></div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <h2 id="modalTitle">Add New Command</h2>
+            <input type="hidden" id="editId">
+            
+            <div class="form-group">
+                <label>Pattern (Command Trigger)</label>
+                <input type="text" id="pattern" placeholder="e.g., hello, menu, help">
+            </div>
+            
+            <div class="form-group">
+                <label>Response Type</label>
+                <select id="actionType">
+                    <option value="text">Text</option>
+                    <option value="image">Image</option>
+                    <option value="video">Video</option>
+                    <option value="audio">Audio</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Response Text</label>
+                <textarea id="response" placeholder="Enter response message..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Media URL (Optional)</label>
+                <input type="text" id="mediaUrl" placeholder="https://...">
+            </div>
+            
+            <div class="form-group">
+                <label>Description (Optional)</label>
+                <input type="text" id="description" placeholder="What does this command do?">
+            </div>
+            
+            <div class="form-group">
+                <label>React Emoji</label>
+                <input type="text" id="react" placeholder="⚡" value="⚡">
+            </div>
+            
+            <div class="form-group">
+                <label>Aliases (comma separated)</label>
+                <input type="text" id="alias" placeholder="hi, hey, hello">
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveCommand()">Save Command</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const API_URL = '/api/commands';
+        const botId = localStorage.getItem('bot_id');
+        const botPass = localStorage.getItem('bot_pass');
+        const token = localStorage.getItem('token');
+
+        let commands = [];
+
+        // 🔒 Auth check - botNumber නැත්නම් login එකට යවනවා
+        if (!botId) {
+            window.location.href = 'login.html';
+        }
+
+        // User info display
+        document.getElementById('userInfo').innerText = `Logged in as: ${botId}`;
+
+        // ═══════════════════════════════════════
+        // 🎯 Load Commands
+        // ═══════════════════════════════════════
+        async function loadCommands() {
+            try {
+                const res = await fetch(API_URL, {
+                    headers: {
+                        'Authorization': `Bearer ${token || botPass}`,
+                        'x-bot-number': botId
+                    }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    commands = data.commands;
+                    renderCommands();
+                } else {
+                    if (res.status === 401) logout();
+                    showToast(data.error || 'Failed to load commands', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('Connection error', 'error');
+            }
+        }
+
+        // ═══════════════════════════════════════
+        // 🎯 Render Commands
+        // ═══════════════════════════════════════
+        function renderCommands() {
+            const grid = document.getElementById('commandsGrid');
+            
+            if (commands.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>No commands yet. Click "Add Command" to create your first one!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = commands.map(cmd => `
+                <div class="command-card">
+                    <div class="pattern">/${cmd.pattern}</div>
+                    <div class="response">${cmd.response || 'No response text'}</div>
+                    <div class="meta">
+                        <span class="badge ${cmd.enabled ? 'badge-active' : 'badge-inactive'}">
+                            ${cmd.enabled ? 'Active' : 'Disabled'}
+                        </span>
+                        <span class="badge badge-type">${cmd.actionType}</span>
+                    </div>
+                    <div class="actions">
+                        <button class="btn btn-primary btn-sm" onclick="editCommand('${cmd._id}')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="toggleCommand('${cmd._id}')">
+                            <i class="fas fa-power-off"></i> ${cmd.enabled ? 'Disable' : 'Enable'}
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteCommand('${cmd._id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ═══════════════════════════════════════
+        // 🎯 Modal
+        // ═══════════════════════════════════════
+        function openModal(id = null) {
+            document.getElementById('modalOverlay').classList.add('active');
+            document.getElementById('modalTitle').innerText = id ? 'Edit Command' : 'Add New Command';
+            document.getElementById('editId').value = id || '';
+            
+            if (id) {
+                const cmd = commands.find(c => c._id === id);
+                if (cmd) {
+                    document.getElementById('pattern').value = cmd.pattern;
+                    document.getElementById('actionType').value = cmd
