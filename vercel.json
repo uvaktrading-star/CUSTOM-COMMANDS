@@ -47,9 +47,5 @@
                 }
             ]
         }
-    ],
-    "env": {
-        "MONGODB_URI": "@mongodb_uri",
-        "FEATURES_MONGODB_URI": "@features_mongodb_uri"
-    }
+    ]
 }
