@@ -8,21 +8,29 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
             font-family: 'Inter', sans-serif;
             background: #0a0a0f;
             color: #fff;
             min-height: 100vh;
             padding: 20px;
+            background-image: 
+                radial-gradient(circle at 20% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 100%, rgba(6, 182, 212, 0.08) 0%, transparent 50%);
         }
+        
         .container { max-width: 1200px; margin: 0 auto; }
+        
+        /* ═══ HEADER ═══ */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
-            padding: 20px;
+            margin-bottom: 24px;
+            padding: 20px 24px;
             background: rgba(8, 15, 30, 0.65);
+            backdrop-filter: blur(22px);
             border-radius: 20px;
             border: 1px solid rgba(0, 150, 255, 0.15);
         }
@@ -38,17 +46,23 @@
             color: rgba(255,255,255,0.4);
             margin-top: 4px;
         }
+        .header-right { display: flex; gap: 10px; align-items: center; }
+        
+        /* ═══ BUTTONS ═══ */
         .btn {
-            padding: 12px 24px;
+            padding: 11px 22px;
             border-radius: 60px;
             border: none;
             cursor: pointer;
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 1px;
             transition: all 0.3s ease;
             font-family: 'Inter', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
         .btn-primary {
             background: linear-gradient(135deg, #3b82f6, #06b6d4);
@@ -56,18 +70,287 @@
         }
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.4);
         }
         .btn-danger {
-            background: rgba(239, 68, 68, 0.2);
+            background: rgba(239, 68, 68, 0.15);
             color: #ef4444;
             border: 1px solid rgba(239, 68, 68, 0.3);
         }
-        .btn-danger:hover { background: rgba(239, 68, 68, 0.3); }
-        .btn-sm { padding: 8px 14px; font-size: 0.7rem; }
+        .btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
+        .btn-ghost {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .btn-ghost:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+        .btn-sm { padding: 7px 14px; font-size: 0.65rem; }
+        
+        /* ═══ ADD COMMAND PANEL ═══ */
+        .add-panel {
+            background: rgba(8, 15, 30, 0.75);
+            backdrop-filter: blur(22px);
+            border: 1px solid rgba(0, 150, 255, 0.2);
+            border-radius: 24px;
+            padding: 28px;
+            margin-bottom: 28px;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+        .add-panel.active { display: block; }
+        
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .add-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .add-panel-header h2 {
+            font-size: 1.1rem;
+            color: #3b82f6;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* ═══ FORM ═══ */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+        .form-row.single { grid-template-columns: 1fr; }
+        .form-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+        
+        .form-group { margin-bottom: 0; }
+        .form-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .form-group label i { color: #3b82f6; }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(0,0,0,0.35);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 0.88rem;
+            outline: none;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+            background: rgba(0,0,0,0.5);
+        }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        .form-group select { cursor: pointer; }
+        .form-group select option { background: #0a0a0f; color: #fff; }
+        
+        .input-hint {
+            font-size: 0.65rem;
+            color: rgba(255,255,255,0.3);
+            margin-top: 6px;
+            font-style: italic;
+        }
+        
+        /* ═══ TYPE SELECTOR (Tabs) ═══ */
+        .type-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+        .type-btn {
+            padding: 16px 20px;
+            background: rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            color: rgba(255,255,255,0.5);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .type-btn i {
+            display: block;
+            font-size: 1.3rem;
+            margin-bottom: 8px;
+        }
+        .type-btn:hover {
+            border-color: rgba(59, 130, 246, 0.4);
+            color: rgba(255,255,255,0.8);
+        }
+        .type-btn.active {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.15);
+        }
+        
+        /* ═══ DYNAMIC SECTIONS ═══ */
+        .dynamic-section {
+            display: none;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 20px;
+        }
+        .dynamic-section.active { display: block; animation: fadeIn 0.3s ease; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .section-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #06b6d4;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(6, 182, 212, 0.3), transparent);
+        }
+        
+        /* ═══ API TEST RESPONSE ═══ */
+        .api-response-box {
+            display: none;
+            margin-top: 16px;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .api-response-box.active { display: block; animation: fadeIn 0.3s ease; }
+        .api-response-box.error { border-color: rgba(239, 68, 68, 0.3); }
+        
+        .response-paths {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .path-btn {
+            padding: 6px 12px;
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 20px;
+            color: #60a5fa;
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .path-btn:hover {
+            background: rgba(59, 130, 246, 0.3);
+            transform: translateY(-1px);
+        }
+        .path-btn.selected {
+            background: rgba(34, 197, 94, 0.2);
+            border-color: rgba(34, 197, 94, 0.5);
+            color: #22c55e;
+        }
+        
+        .response-json {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.7);
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 8px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+        }
+        
+        /* ═══ SELECTED PATHS CHIPS ═══ */
+        .selected-paths {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(34, 197, 94, 0.05);
+            border: 1px dashed rgba(34, 197, 94, 0.2);
+            border-radius: 12px;
+            min-height: 45px;
+        }
+        .selected-path-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: #22c55e;
+        }
+        .selected-path-chip button {
+            background: none;
+            border: none;
+            color: rgba(239, 68, 68, 0.7);
+            cursor: pointer;
+            padding: 0;
+            font-size: 0.9rem;
+            line-height: 1;
+        }
+        .selected-path-chip button:hover { color: #ef4444; }
+        
+        /* ═══ FORM ACTIONS ═══ */
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 8px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        
+        /* ═══ COMMANDS GRID ═══ */
         .commands-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 20px;
         }
         .command-card {
@@ -75,28 +358,52 @@
             backdrop-filter: blur(22px);
             border: 1px solid rgba(0, 150, 255, 0.15);
             border-radius: 20px;
-            padding: 24px;
+            padding: 22px;
             transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .command-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #3b82f6, #06b6d4);
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
         .command-card:hover {
-            border-color: rgba(0, 212, 255, 0.3);
+            border-color: rgba(0, 212, 255, 0.35);
             transform: translateY(-4px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
         }
+        .command-card:hover::before { opacity: 1; }
+        
         .command-card .pattern {
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             font-weight: 700;
             color: #3b82f6;
             margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
+        .command-card .pattern i { font-size: 0.9rem; color: #06b6d4; }
         .command-card .response {
-            font-size: 0.85rem;
-            color: rgba(255,255,255,0.6);
-            margin-bottom: 12px;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.55);
+            margin-bottom: 14px;
             word-break: break-word;
+            line-height: 1.5;
+            max-height: 60px;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .command-card .meta {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
             margin-bottom: 16px;
         }
@@ -106,479 +413,343 @@
             font-size: 0.6rem;
             font-weight: 600;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .badge-active { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
-        .badge-inactive { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-        .badge-type { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
-        .command-card .actions { display: flex; gap: 8px; }
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(10px);
-            z-index: 100;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .modal-overlay.active { display: flex; }
-        .modal {
-            background: rgba(8, 15, 30, 0.95);
-            border: 1px solid rgba(0, 150, 255, 0.2);
-            border-radius: 24px;
-            padding: 32px;
-            width: 100%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        .modal h2 {
-            font-size: 1.2rem;
-            margin-bottom: 24px;
-            color: #3b82f6;
-        }
-        .form-group { margin-bottom: 16px; }
-        .form-group label {
-            display: block;
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: rgba(255,255,255,0.4);
-            margin-bottom: 6px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px 16px;
-            background: rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 12px;
-            color: #fff;
-            font-size: 0.9rem;
-            outline: none;
-            font-family: 'Inter', sans-serif;
-            transition: all 0.3s ease;
-        }
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
-        }
-        .form-group textarea { resize: vertical; min-height: 80px; }
-        .modal-actions {
+        .badge-active { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+        .badge-inactive { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        .badge-type { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+        .badge-media { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+        .badge-api { background: rgba(6, 182, 212, 0.15); color: #06b6d4; }
+        
+        .command-card .actions {
             display: flex;
-            gap: 12px;
-            margin-top: 24px;
+            gap: 8px;
+            flex-wrap: wrap;
         }
-        .modal-actions .btn { flex: 1; }
+        
+        /* ═══ EMPTY STATE ═══ */
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
+            padding: 80px 20px;
             color: rgba(255,255,255,0.3);
             grid-column: 1/-1;
         }
         .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 16px;
-            color: rgba(59, 130, 246, 0.3);
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            color: rgba(59, 130, 246, 0.25);
         }
+        .empty-state p { font-size: 0.9rem; }
+        
+        /* ═══ TOAST ═══ */
         .toast {
             position: fixed;
             bottom: 30px;
             right: 30px;
             padding: 16px 24px;
-            background: rgba(8, 15, 30, 0.95);
+            background: rgba(8, 15, 30, 0.98);
+            backdrop-filter: blur(20px);
             border: 1px solid rgba(0, 150, 255, 0.3);
             border-radius: 16px;
             color: #fff;
             font-size: 0.85rem;
-            z-index: 200;
-            transform: translateY(100px);
+            z-index: 9999;
+            transform: translateY(120px);
             opacity: 0;
-            transition: all 0.4s ease;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 400px;
         }
         .toast.show { transform: translateY(0); opacity: 1; }
         .toast.success { border-color: rgba(34, 197, 94, 0.5); }
         .toast.error { border-color: rgba(239, 68, 68, 0.5); }
-        @media (max-width: 600px) {
+        .toast i { font-size: 1.1rem; }
+        .toast.success i { color: #22c55e; }
+        .toast.error i { color: #ef4444; }
+        
+        /* ═══ CODE MODAL ═══ */
+        .code-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .code-modal-overlay.active { display: flex; }
+        .code-modal {
+            background: #0d1117;
+            border: 1px solid rgba(0, 150, 255, 0.25);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 800px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .code-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            background: rgba(0,0,0,0.3);
+        }
+        .code-modal-header h3 {
+            font-size: 1rem;
+            color: #3b82f6;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .code-modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .code-block {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 0.78rem;
+            line-height: 1.6;
+            color: #c9d1d9;
+            background: rgba(0,0,0,0.5);
+            padding: 20px;
+            border-radius: 12px;
+            white-space: pre;
+            overflow-x: auto;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        /* ═══ RESPONSIVE ═══ */
+        @media (max-width: 768px) {
+            .form-row, .form-row.triple { grid-template-columns: 1fr; }
             .header { flex-direction: column; gap: 16px; text-align: center; }
+            .header-right { width: 100%; justify-content: center; }
             .commands-grid { grid-template-columns: 1fr; }
-            .modal { padding: 24px 20px; }
+            .add-panel { padding: 20px; }
+            .type-selector { grid-template-columns: 1fr; }
+            .form-actions { flex-direction: column; }
+            .form-actions .btn { width: 100%; justify-content: center; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
+        <!-- ═══ HEADER ═══ -->
         <div class="header">
             <div>
                 <h1><i class="fas fa-robot"></i> Command Dashboard</h1>
                 <div class="user-info" id="userInfo">Loading...</div>
             </div>
-            <div>
-                <button class="btn btn-primary" onclick="openModal()">
+            <div class="header-right">
+                <button class="btn btn-primary" onclick="toggleAddPanel()" id="addPanelBtn">
                     <i class="fas fa-plus"></i> Add Command
                 </button>
-                <button class="btn btn-danger btn-sm" onclick="logout()" style="margin-left: 10px;">
+                <button class="btn btn-danger btn-sm" onclick="logout()">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </button>
             </div>
         </div>
 
-        <!-- Commands Grid -->
+        <!-- ═══ ADD COMMAND PANEL ═══ -->
+        <div class="add-panel" id="addPanel">
+            <div class="add-panel-header">
+                <h2><i class="fas fa-plus-circle"></i> <span id="formTitle">Add New Command</span></h2>
+                <button class="btn btn-ghost btn-sm" onclick="toggleAddPanel()">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+
+            <input type="hidden" id="editId">
+
+            <!-- Basic Info -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label><i class="fas fa-terminal"></i> Pattern (Command Trigger)</label>
+                    <input type="text" id="pattern" placeholder="e.g., hello, menu, help">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-tags"></i> Aliases (comma separated)</label>
+                    <input type="text" id="alias" placeholder="hi, hey, hello">
+                </div>
+            </div>
+
+            <!-- Type Selector -->
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label><i class="fas fa-shapes"></i> Command Type</label>
+            </div>
+            <div class="type-selector">
+                <div class="type-btn active" data-type="text" onclick="selectType('text')">
+                    <i class="fas fa-comment-dots"></i>
+                    Text
+                </div>
+                <div class="type-btn" data-type="media" onclick="selectType('media')">
+                    <i class="fas fa-photo-film"></i>
+                    Media
+                </div>
+                <div class="type-btn" data-type="api" onclick="selectType('api')">
+                    <i class="fas fa-cloud"></i>
+                    API
+                </div>
+            </div>
+
+            <!-- ═══ TEXT SECTION ═══ -->
+            <div class="dynamic-section active" id="section-text">
+                <div class="section-title"><i class="fas fa-comment-dots"></i> Text Response</div>
+                <div class="form-group">
+                    <label><i class="fas fa-message"></i> Response Message</label>
+                    <textarea id="response" placeholder="Enter the response message..."></textarea>
+                </div>
+            </div>
+
+            <!-- ═══ MEDIA SECTION ═══ -->
+            <div class="dynamic-section" id="section-media">
+                <div class="section-title"><i class="fas fa-photo-film"></i> Media Settings</div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-file"></i> Media Type</label>
+                        <select id="mediaType" onchange="updateMediaFields()">
+                            <option value="image">🖼️ Image</option>
+                            <option value="audio">🎵 Audio</option>
+                            <option value="document">📄 Document</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-link"></i> Media URL</label>
+                        <input type="text" id="mediaUrl" placeholder="https://example.com/image.jpg">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-comment"></i> Caption <span style="color: rgba(255,255,255,0.3); font-size: 0.65rem; text-transform: none;">(optional)</span></label>
+                    <textarea id="mediaCaption" placeholder="Caption for the media..."></textarea>
+                </div>
+            </div>
+
+            <!-- ═══ API SECTION ═══ -->
+            <div class="dynamic-section" id="section-api">
+                <div class="section-title"><i class="fas fa-cloud"></i> API Configuration</div>
+                
+                <div class="form-row">
+                    <div class="form-group" style="max-width: 150px;">
+                        <label><i class="fas fa-code-branch"></i> Method</label>
+                        <select id="apiMethod">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-link"></i> API URL</label>
+                        <input type="text" id="apiUrl" placeholder="https://api.example.com/endpoint">
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                    <button class="btn btn-primary btn-sm" onclick="testApi()" id="testApiBtn">
+                        <i class="fas fa-flask"></i> Test API
+                    </button>
+                    <button class="btn btn-ghost btn-sm" onclick="clearApiResponse()">
+                        <i class="fas fa-eraser"></i> Clear
+                    </button>
+                </div>
+
+                <!-- API Response Box -->
+                <div class="api-response-box" id="apiResponseBox">
+                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.5); margin-bottom: 10px; font-weight: 600;">
+                        <i class="fas fa-reply"></i> RESPONSE PREVIEW
+                    </div>
+                    <div class="response-json" id="responseJson"></div>
+                    <div style="font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 14px; margin-bottom: 8px; font-weight: 600;">
+                        <i class="fas fa-mouse-pointer"></i> CLICK TO ADD PATH:
+                    </div>
+                    <div class="response-paths" id="responsePaths"></div>
+                </div>
+
+                <!-- Selected Paths -->
+                <div class="form-group" style="margin-top: 16px;">
+                    <label><i class="fas fa-list"></i> Selected Response Paths</label>
+                    <div class="selected-paths" id="selectedPaths">
+                        <span style="color: rgba(255,255,255,0.2); font-size: 0.75rem; font-style: italic;">
+                            Click paths above to add them here...
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Image URL (optional) -->
+                <div class="form-group" style="margin-top: 16px;">
+                    <label><i class="fas fa-image"></i> Image URL <span style="color: rgba(255,255,255,0.3); font-size: 0.65rem; text-transform: none;">(optional)</span></label>
+                    <input type="text" id="apiImageUrl" placeholder="https://example.com/image.jpg">
+                    <div class="input-hint">If provided, an image will be sent along with the API response</div>
+                </div>
+
+                <!-- Caption with paths -->
+                <div class="form-group" style="margin-top: 16px;">
+                    <label><i class="fas fa-comment"></i> Caption (Use {path} for response values)</label>
+                    <textarea id="apiCaption" placeholder="Example: Title: {data.title}&#10;Description: {data.description}"></textarea>
+                    <div class="input-hint">
+                        💡 Insert paths like <code style="background: rgba(59,130,246,0.15); padding: 2px 6px; border-radius: 4px; color: #60a5fa;">{data.title}</code> 
+                        or <code style="background: rgba(59,130,246,0.15); padding: 2px 6px; border-radius: 4px; color: #60a5fa;">{result.url}</code>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ EXTRA SETTINGS ═══ -->
+            <div class="form-row triple" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.06);">
+                <div class="form-group">
+                    <label><i class="fas fa-tag"></i> Category</label>
+                    <input type="text" id="description" placeholder="What does it do?">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-face-smile"></i> React Emoji</label>
+                    <input type="text" id="react" placeholder="⚡" value="⚡">
+                </div>
+            </div>
+
+            <!-- ═══ FORM ACTIONS ═══ -->
+            <div class="form-actions">
+                <button class="btn btn-ghost" onclick="viewCode()">
+                    <i class="fas fa-code"></i> View Code
+                </button>
+                <button class="btn btn-primary" onclick="saveCommand()" id="saveBtn">
+                    <i class="fas fa-save"></i> Save Command
+                </button>
+            </div>
+        </div>
+
+        <!-- ═══ COMMANDS GRID ═══ -->
         <div id="commandsGrid" class="commands-grid"></div>
     </div>
 
-    <!-- Modal -->
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal">
-            <h2 id="modalTitle">Add New Command</h2>
-            <input type="hidden" id="editId">
-            
-            <div class="form-group">
-                <label>Pattern (Command Trigger)</label>
-                <input type="text" id="pattern" placeholder="e.g., hello, menu, help">
+    <!-- ═══ CODE MODAL ═══ -->
+    <div class="code-modal-overlay" id="codeModalOverlay">
+        <div class="code-modal">
+            <div class="code-modal-header">
+                <h3><i class="fas fa-code"></i> Command Code Preview</h3>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-ghost btn-sm" onclick="copyCode()">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="closeCodeModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
             </div>
-            
-            <div class="form-group">
-                <label>Response Type</label>
-                <select id="actionType">
-                    <option value="text">Text</option>
-                    <option value="image">Image</option>
-                    <option value="video">Video</option>
-                    <option value="audio">Audio</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label>Response Text</label>
-                <textarea id="response" placeholder="Enter response message..."></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label>Media URL (Optional)</label>
-                <input type="text" id="mediaUrl" placeholder="https://...">
-            </div>
-            
-            <div class="form-group">
-                <label>Description (Optional)</label>
-                <input type="text" id="description" placeholder="What does this command do?">
-            </div>
-            
-            <div class="form-group">
-                <label>React Emoji</label>
-                <input type="text" id="react" placeholder="⚡" value="⚡">
-            </div>
-            
-            <div class="form-group">
-                <label>Aliases (comma separated)</label>
-                <input type="text" id="alias" placeholder="hi, hey, hello">
-            </div>
-            
-            <div class="modal-actions">
-                <button class="btn btn-danger" onclick="closeModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveCommand()">Save Command</button>
+            <div class="code-modal-body">
+                <pre class="code-block" id="codeBlock"></pre>
             </div>
         </div>
     </div>
 
+    <!-- ═══ TOAST ═══ -->
     <div class="toast" id="toast"></div>
 
-    <script>
-        // ═══════════════════════════════════════════
-        // 🔧 CONFIG & STATE
-        // ═══════════════════════════════════════════
-        const API_URL = '/api/commands';
-        const botId = localStorage.getItem('bot_id');
-        const botPass = localStorage.getItem('bot_pass');
-        const token = localStorage.getItem('token');
-
-        let commands = [];
-
-        // ═══════════════════════════════════════════
-        // 🔍 DEBUG LOGS
-        // ═══════════════════════════════════════════
-        console.log('═══════════════════════════════════════');
-        console.log('🔍 DASHBOARD LOADED');
-        console.log('═══════════════════════════════════════');
-        console.log('bot_id:', botId);
-        console.log('bot_pass:', botPass ? '✅ present' : '❌ missing');
-        console.log('token:', token ? '✅ present' : '❌ missing');
-        console.log('All localStorage keys:', Object.keys(localStorage));
-        console.log('═══════════════════════════════════════');
-
-        // ═══════════════════════════════════════════
-        // 🔒 AUTH CHECK
-        // ═══════════════════════════════════════════
-        if (!botId) {
-            console.warn('⚠️ No bot_id found in localStorage!');
-            console.warn('⚠️ Redirecting to login page...');
-            // setTimeout එකක් දාන්නේ loop එක නවත්තන්න
-            setTimeout(() => {
-                window.location.replace('/login.html');
-            }, 500);
-        } else {
-            // ✅ Auth OK - Dashboard load කරන්න
-            console.log('✅ Auth OK - Loading dashboard...');
-            
-            // User info display
-            const userInfoEl = document.getElementById('userInfo');
-            if (userInfoEl) {
-                userInfoEl.innerText = `Logged in as: ${botId}`;
-            }
-            
-            // Commands load කරන්න
-            loadCommands();
-        }
-
-        // ═══════════════════════════════════════════
-        // 🎯 LOAD COMMANDS
-        // ═══════════════════════════════════════════
-        async function loadCommands() {
-            console.log('📡 Loading commands from:', API_URL);
-            
-            try {
-                const headers = {
-                    'Authorization': `Bearer ${token || botPass || ''}`,
-                    'x-bot-number': botId || ''
-                };
-                
-                console.log('📤 Request headers:', headers);
-                
-                const res = await fetch(API_URL, { headers });
-                
-                console.log('📥 Response status:', res.status);
-                
-                const data = await res.json();
-                console.log('📥 Response data:', data);
-                
-                if (data.success) {
-                    commands = data.commands || [];
-                    console.log(`✅ Loaded ${commands.length} commands`);
-                    renderCommands();
-                } else {
-                    console.warn('⚠️ API returned success:false -', data.error);
-                    
-                    // 401 නම් logout කරන්න
-                    if (res.status === 401) {
-                        console.warn('🔒 Unauthorized - logging out');
-                        // මෙතනට එනවා නම් auth ප්රශ්නයක්
-                        // bot_id තියෙනවා නමුත් API එකෙන් reject කරනවා
-                        showToast('Session expired. Please login again.', 'error');
-                        setTimeout(() => logout(), 1500);
-                    } else {
-                        showToast(data.error || 'Failed to load commands', 'error');
-                    }
-                }
-            } catch (e) {
-                console.error('❌ Load commands error:', e);
-                showToast('Connection error. Please refresh.', 'error');
-            }
-        }
-
-        // ═══════════════════════════════════════════
-        // 🎯 RENDER COMMANDS
-        // ═══════════════════════════════════════════
-        function renderCommands() {
-            const grid = document.getElementById('commandsGrid');
-            
-            if (commands.length === 0) {
-                grid.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-inbox"></i>
-                        <p>No commands yet. Click "Add Command" to create your first one!</p>
-                    </div>
-                `;
-                return;
-            }
-
-            grid.innerHTML = commands.map(cmd => `
-                <div class="command-card">
-                    <div class="pattern">/${cmd.pattern}</div>
-                    <div class="response">${cmd.response || 'No response text'}</div>
-                    <div class="meta">
-                        <span class="badge ${cmd.enabled ? 'badge-active' : 'badge-inactive'}">
-                            ${cmd.enabled ? 'Active' : 'Disabled'}
-                        </span>
-                        <span class="badge badge-type">${cmd.actionType}</span>
-                    </div>
-                    <div class="actions">
-                        <button class="btn btn-primary btn-sm" onclick="editCommand('${cmd._id}')">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
-                        <button class="btn btn-danger btn-sm" onclick="toggleCommand('${cmd._id}')">
-                            <i class="fas fa-power-off"></i> ${cmd.enabled ? 'Disable' : 'Enable'}
-                        </button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteCommand('${cmd._id}')">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // ═══════════════════════════════════════════
-        // 🎯 MODAL
-        // ═══════════════════════════════════════════
-        function openModal(id = null) {
-            document.getElementById('modalOverlay').classList.add('active');
-            document.getElementById('modalTitle').innerText = id ? 'Edit Command' : 'Add New Command';
-            document.getElementById('editId').value = id || '';
-            
-            if (id) {
-                const cmd = commands.find(c => c._id === id);
-                if (cmd) {
-                    document.getElementById('pattern').value = cmd.pattern;
-                    document.getElementById('actionType').value = cmd.actionType;
-                    document.getElementById('response').value = cmd.response;
-                    document.getElementById('mediaUrl').value = cmd.mediaUrl || '';
-                    document.getElementById('description').value = cmd.description || '';
-                    document.getElementById('react').value = cmd.react || '⚡';
-                    document.getElementById('alias').value = (cmd.alias || []).join(', ');
-                }
-            } else {
-                document.getElementById('pattern').value = '';
-                document.getElementById('actionType').value = 'text';
-                document.getElementById('response').value = '';
-                document.getElementById('mediaUrl').value = '';
-                document.getElementById('description').value = '';
-                document.getElementById('react').value = '⚡';
-                document.getElementById('alias').value = '';
-            }
-        }
-
-        function closeModal() {
-            document.getElementById('modalOverlay').classList.remove('active');
-        }
-
-        // ═══════════════════════════════════════════
-        // 🎯 SAVE COMMAND
-        // ═══════════════════════════════════════════
-        async function saveCommand() {
-            const id = document.getElementById('editId').value;
-            const pattern = document.getElementById('pattern').value.trim();
-            const actionType = document.getElementById('actionType').value;
-            const response = document.getElementById('response').value.trim();
-            const mediaUrl = document.getElementById('mediaUrl').value.trim();
-            const description = document.getElementById('description').value.trim();
-            const react = document.getElementById('react').value.trim();
-            const alias = document.getElementById('alias').value.split(',').map(a => a.trim()).filter(a => a);
-
-            if (!pattern) {
-                showToast('Pattern is required', 'error');
-                return;
-            }
-
-            const body = { pattern, actionType, response, mediaUrl, description, react, alias };
-            console.log('💾 Saving command:', body);
-
-            try {
-                const url = id ? `${API_URL}/${id}` : API_URL;
-                const method = id ? 'PUT' : 'POST';
-                
-                const res = await fetch(url, {
-                    method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token || botPass || ''}`,
-                        'x-bot-number': botId || ''
-                    },
-                    body: JSON.stringify(body)
-                });
-                const data = await res.json();
-                console.log('📥 Save response:', data);
-
-                if (data.success) {
-                    showToast(id ? 'Command updated!' : 'Command created!', 'success');
-                    closeModal();
-                    loadCommands();
-                } else {
-                    showToast(data.error || 'Failed to save', 'error');
-                }
-            } catch (e) {
-                console.error('Save error:', e);
-                showToast('Connection error', 'error');
-            }
-        }
-
-        function editCommand(id) { openModal(id); }
-
-        // ═══════════════════════════════════════════
-        // 🎯 TOGGLE COMMAND
-        // ═══════════════════════════════════════════
-        async function toggleCommand(id) {
-            try {
-                const res = await fetch(`${API_URL}/${id}/toggle`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${token || botPass || ''}`,
-                        'x-bot-number': botId || ''
-                    }
-                });
-                const data = await res.json();
-                if (data.success) {
-                    showToast('Command status updated', 'success');
-                    loadCommands();
-                } else {
-                    showToast(data.error || 'Failed to toggle', 'error');
-                }
-            } catch (e) {
-                showToast('Connection error', 'error');
-            }
-        }
-
-        // ═══════════════════════════════════════════
-        // 🎯 DELETE COMMAND
-        // ═══════════════════════════════════════════
-        async function deleteCommand(id) {
-            if (!confirm('Are you sure you want to delete this command?')) return;
-            
-            try {
-                const res = await fetch(`${API_URL}/${id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${token || botPass || ''}`,
-                        'x-bot-number': botId || ''
-                    }
-                });
-                const data = await res.json();
-                if (data.success) {
-                    showToast('Command deleted', 'success');
-                    loadCommands();
-                } else {
-                    showToast(data.error || 'Failed to delete', 'error');
-                }
-            } catch (e) {
-                showToast('Connection error', 'error');
-            }
-        }
-
-        // ═══════════════════════════════════════════
-        // 🎯 LOGOUT
-        // ═══════════════════════════════════════════
-        function logout() {
-            console.log('🚪 Logging out...');
-            localStorage.removeItem('token');
-            localStorage.removeItem('bot_id');
-            localStorage.removeItem('bot_pass');
-            localStorage.removeItem('bot_settings');
-            localStorage.removeItem('bot_user');
-            window.location.replace('/login.html');
-        }
-
-        // ═══════════════════════════════════════════
-        // 🎯 TOAST
-        // ═══════════════════════════════════════════
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.innerText = message;
-            toast.className = `toast ${type} show`;
-            setTimeout(() => toast.classList.remove('show'), 3000);
-        }
-    </script>
+    <!-- ═══ SCRIPTS GO HERE (Part 2 & 3) ═══ -->
 </body>
 </html>
