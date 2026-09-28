@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectDB } from './db.js';
 import commandRoutes from './commands.js';
+import testApiRoutes from './test-api.js';
 
 dotenv.config();
 
@@ -14,6 +15,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
+app.use('/api/test-api', testApiRoutes);
 app.use('/api/commands', commandRoutes);
 
 // Health check
