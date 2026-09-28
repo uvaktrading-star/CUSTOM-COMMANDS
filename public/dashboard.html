@@ -289,6 +289,9 @@
     <div class="toast" id="toast"></div>
 
     <script>
+        // ═══════════════════════════════════════════
+        // 🔧 CONFIG & STATE
+        // ═══════════════════════════════════════════
         const API_URL = '/api/commands';
         const botId = localStorage.getItem('bot_id');
         const botPass = localStorage.getItem('bot_pass');
@@ -296,43 +299,90 @@
 
         let commands = [];
 
-        // 🔒 Auth check - botNumber නැත්නම් login එකට යවනවා
+        // ═══════════════════════════════════════════
+        // 🔍 DEBUG LOGS
+        // ═══════════════════════════════════════════
+        console.log('═══════════════════════════════════════');
+        console.log('🔍 DASHBOARD LOADED');
+        console.log('═══════════════════════════════════════');
+        console.log('bot_id:', botId);
+        console.log('bot_pass:', botPass ? '✅ present' : '❌ missing');
+        console.log('token:', token ? '✅ present' : '❌ missing');
+        console.log('All localStorage keys:', Object.keys(localStorage));
+        console.log('═══════════════════════════════════════');
+
+        // ═══════════════════════════════════════════
+        // 🔒 AUTH CHECK
+        // ═══════════════════════════════════════════
         if (!botId) {
-            window.location.href = 'login.html';
+            console.warn('⚠️ No bot_id found in localStorage!');
+            console.warn('⚠️ Redirecting to login page...');
+            // setTimeout එකක් දාන්නේ loop එක නවත්තන්න
+            setTimeout(() => {
+                window.location.replace('/login.html');
+            }, 500);
+        } else {
+            // ✅ Auth OK - Dashboard load කරන්න
+            console.log('✅ Auth OK - Loading dashboard...');
+            
+            // User info display
+            const userInfoEl = document.getElementById('userInfo');
+            if (userInfoEl) {
+                userInfoEl.innerText = `Logged in as: ${botId}`;
+            }
+            
+            // Commands load කරන්න
+            loadCommands();
         }
 
-        // User info display
-        document.getElementById('userInfo').innerText = `Logged in as: ${botId}`;
-
-        // ═══════════════════════════════════════
-        // 🎯 Load Commands
-        // ═══════════════════════════════════════
+        // ═══════════════════════════════════════════
+        // 🎯 LOAD COMMANDS
+        // ═══════════════════════════════════════════
         async function loadCommands() {
+            console.log('📡 Loading commands from:', API_URL);
+            
             try {
-                const res = await fetch(API_URL, {
-                    headers: {
-                        'Authorization': `Bearer ${token || botPass}`,
-                        'x-bot-number': botId
-                    }
-                });
+                const headers = {
+                    'Authorization': `Bearer ${token || botPass || ''}`,
+                    'x-bot-number': botId || ''
+                };
+                
+                console.log('📤 Request headers:', headers);
+                
+                const res = await fetch(API_URL, { headers });
+                
+                console.log('📥 Response status:', res.status);
+                
                 const data = await res.json();
+                console.log('📥 Response data:', data);
                 
                 if (data.success) {
-                    commands = data.commands;
+                    commands = data.commands || [];
+                    console.log(`✅ Loaded ${commands.length} commands`);
                     renderCommands();
                 } else {
-                    if (res.status === 401) logout();
-                    showToast(data.error || 'Failed to load commands', 'error');
+                    console.warn('⚠️ API returned success:false -', data.error);
+                    
+                    // 401 නම් logout කරන්න
+                    if (res.status === 401) {
+                        console.warn('🔒 Unauthorized - logging out');
+                        // මෙතනට එනවා නම් auth ප්රශ්නයක්
+                        // bot_id තියෙනවා නමුත් API එකෙන් reject කරනවා
+                        showToast('Session expired. Please login again.', 'error');
+                        setTimeout(() => logout(), 1500);
+                    } else {
+                        showToast(data.error || 'Failed to load commands', 'error');
+                    }
                 }
             } catch (e) {
-                console.error(e);
-                showToast('Connection error', 'error');
+                console.error('❌ Load commands error:', e);
+                showToast('Connection error. Please refresh.', 'error');
             }
         }
 
-        // ═══════════════════════════════════════
-        // 🎯 Render Commands
-        // ═══════════════════════════════════════
+        // ═══════════════════════════════════════════
+        // 🎯 RENDER COMMANDS
+        // ═══════════════════════════════════════════
         function renderCommands() {
             const grid = document.getElementById('commandsGrid');
             
@@ -371,9 +421,9 @@
             `).join('');
         }
 
-        // ═══════════════════════════════════════
-        // 🎯 Modal
-        // ═══════════════════════════════════════
+        // ═══════════════════════════════════════════
+        // 🎯 MODAL
+        // ═══════════════════════════════════════════
         function openModal(id = null) {
             document.getElementById('modalOverlay').classList.add('active');
             document.getElementById('modalTitle').innerText = id ? 'Edit Command' : 'Add New Command';
@@ -405,9 +455,9 @@
             document.getElementById('modalOverlay').classList.remove('active');
         }
 
-        // ═══════════════════════════════════════
-        // 🎯 Save Command
-        // ═══════════════════════════════════════
+        // ═══════════════════════════════════════════
+        // 🎯 SAVE COMMAND
+        // ═══════════════════════════════════════════
         async function saveCommand() {
             const id = document.getElementById('editId').value;
             const pattern = document.getElementById('pattern').value.trim();
@@ -424,6 +474,7 @@
             }
 
             const body = { pattern, actionType, response, mediaUrl, description, react, alias };
+            console.log('💾 Saving command:', body);
 
             try {
                 const url = id ? `${API_URL}/${id}` : API_URL;
@@ -433,12 +484,13 @@
                     method,
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token || botPass}`,
-                        'x-bot-number': botId
+                        'Authorization': `Bearer ${token || botPass || ''}`,
+                        'x-bot-number': botId || ''
                     },
                     body: JSON.stringify(body)
                 });
                 const data = await res.json();
+                console.log('📥 Save response:', data);
 
                 if (data.success) {
                     showToast(id ? 'Command updated!' : 'Command created!', 'success');
@@ -448,37 +500,40 @@
                     showToast(data.error || 'Failed to save', 'error');
                 }
             } catch (e) {
+                console.error('Save error:', e);
                 showToast('Connection error', 'error');
             }
         }
 
         function editCommand(id) { openModal(id); }
 
-        // ═══════════════════════════════════════
-        // 🎯 Toggle Command
-        // ═══════════════════════════════════════
+        // ═══════════════════════════════════════════
+        // 🎯 TOGGLE COMMAND
+        // ═══════════════════════════════════════════
         async function toggleCommand(id) {
             try {
                 const res = await fetch(`${API_URL}/${id}/toggle`, {
                     method: 'PATCH',
                     headers: {
-                        'Authorization': `Bearer ${token || botPass}`,
-                        'x-bot-number': botId
+                        'Authorization': `Bearer ${token || botPass || ''}`,
+                        'x-bot-number': botId || ''
                     }
                 });
                 const data = await res.json();
                 if (data.success) {
                     showToast('Command status updated', 'success');
                     loadCommands();
+                } else {
+                    showToast(data.error || 'Failed to toggle', 'error');
                 }
             } catch (e) {
                 showToast('Connection error', 'error');
             }
         }
 
-        // ═══════════════════════════════════════
-        // 🎯 Delete Command
-        // ═══════════════════════════════════════
+        // ═══════════════════════════════════════════
+        // 🎯 DELETE COMMAND
+        // ═══════════════════════════════════════════
         async function deleteCommand(id) {
             if (!confirm('Are you sure you want to delete this command?')) return;
             
@@ -486,44 +541,44 @@
                 const res = await fetch(`${API_URL}/${id}`, {
                     method: 'DELETE',
                     headers: {
-                        'Authorization': `Bearer ${token || botPass}`,
-                        'x-bot-number': botId
+                        'Authorization': `Bearer ${token || botPass || ''}`,
+                        'x-bot-number': botId || ''
                     }
                 });
                 const data = await res.json();
                 if (data.success) {
                     showToast('Command deleted', 'success');
                     loadCommands();
+                } else {
+                    showToast(data.error || 'Failed to delete', 'error');
                 }
             } catch (e) {
                 showToast('Connection error', 'error');
             }
         }
 
-        // ═══════════════════════════════════════
-        // 🎯 Logout
-        // ═══════════════════════════════════════
+        // ═══════════════════════════════════════════
+        // 🎯 LOGOUT
+        // ═══════════════════════════════════════════
         function logout() {
+            console.log('🚪 Logging out...');
             localStorage.removeItem('token');
             localStorage.removeItem('bot_id');
             localStorage.removeItem('bot_pass');
             localStorage.removeItem('bot_settings');
             localStorage.removeItem('bot_user');
-            window.location.href = 'login.html';
+            window.location.replace('/login.html');
         }
 
-        // ═══════════════════════════════════════
-        // 🎯 Toast
-        // ═══════════════════════════════════════
+        // ═══════════════════════════════════════════
+        // 🎯 TOAST
+        // ═══════════════════════════════════════════
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             toast.innerText = message;
             toast.className = `toast ${type} show`;
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
-
-        // Load on start
-        loadCommands();
     </script>
 </body>
 </html>
