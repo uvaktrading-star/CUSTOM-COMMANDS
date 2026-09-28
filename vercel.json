@@ -4,6 +4,10 @@
     {
       "src": "api/index.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -12,24 +16,16 @@
       "dest": "/api/index.js"
     },
     {
-      "src": "/dashboard",
-      "dest": "/public/dashboard.html"
-    },
-    {
-      "src": "/dashboard.html",
-      "dest": "/public/dashboard.html"
+      "src": "/",
+      "dest": "/public/login.html"
     },
     {
       "src": "/login",
       "dest": "/public/login.html"
     },
     {
-      "src": "/login.html",
-      "dest": "/public/login.html"
-    },
-    {
-      "src": "/",
-      "dest": "/public/login.html"
+      "src": "/dashboard",
+      "dest": "/public/dashboard.html"
     },
     {
       "src": "/(.*)",
