@@ -565,73 +565,78 @@
         const API_URL = 'https://zanta-web-auth.vercel.app/api/auth';
 
         async function handleLogin() {
-            const id = document.getElementById('botId').value.trim();
-            const password = document.getElementById('botPass').value.trim();
-            const errorMsg = document.getElementById('errorMsg');
-            const btn = document.getElementById('loginBtn');
+    const id = document.getElementById('botId').value.trim();
+    const password = document.getElementById('botPass').value.trim();
+    const errorMsg = document.getElementById('errorMsg');
+    const btn = document.getElementById('loginBtn');
 
-            // Reset error
-            errorMsg.classList.remove('show');
-            errorMsg.innerText = '';
+    errorMsg.classList.remove('show');
+    errorMsg.innerText = '';
 
-            // Validation
-            if (!id || !password) {
-                errorMsg.innerText = "Please fill all fields!";
-                errorMsg.classList.add('show');
-                return;
+    if (!id || !password) {
+        errorMsg.innerText = "Please fill all fields!";
+        errorMsg.classList.add('show');
+        return;
+    }
+
+    btn.innerText = "VERIFYING...";
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, password, action: 'login' })
+        });
+
+        const data = await response.json();
+        
+        // 🔥 DEBUG: Console එකේ API response එක පෙන්නන්න
+        console.log('🔍 Web-Auth API Response:', data);
+
+        // 🔥 success කියන field එක නැත්නම්, වෙනත් fields පරීක්ෂා කරන්න
+        const isSuccess = 
+            data.success === true || 
+            data.status === 'success' || 
+            data.status === 'ok' ||
+            data.loggedIn === true ||
+            data.authenticated === true ||
+            (data.token && data.token.length > 0);
+
+        if (isSuccess) {
+            // ✅ Login success - botNumber එක save කරනවා
+            localStorage.setItem('bot_id', id);
+            localStorage.setItem('bot_pass', password);
+            
+            if (data.settings) {
+                localStorage.setItem('bot_settings', JSON.stringify(data.settings));
             }
-
-            btn.innerText = "VERIFYING...";
-            btn.disabled = true;
-
-            try {
-                // 🔥 web-auth API එකට login request එක යවනවා
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        id: id, 
-                        password: password, 
-                        action: 'login' 
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    // ✅ Login success - botNumber එක save කරනවා
-                    // 🔥 මේ botNumber එකෙන් තමයි commands save/load වෙන්නේ
-                    localStorage.setItem('bot_id', id);
-                    localStorage.setItem('bot_pass', password);
-                    
-                    // web-auth API එකෙන් එන අමතර data save කරනවා
-                    if (data.settings) {
-                        localStorage.setItem('bot_settings', JSON.stringify(data.settings));
-                    }
-                    if (data.token) {
-                        localStorage.setItem('token', data.token);
-                    }
-                    if (data.user) {
-                        localStorage.setItem('bot_user', JSON.stringify(data.user));
-                    }
-                    
-                    // ✅ Dashboard එකට යනවා
-                    window.location.href = 'dashboard.html';
-                } else {
-                    // ❌ Login failed
-                    errorMsg.innerText = data.error || data.message || "Invalid credentials!";
-                    errorMsg.classList.add('show');
-                    btn.innerHTML = '<i class="fas fa-sign-in-alt"></i><span>Login Now</span><i class="fas fa-arrow-right"></i>';
-                    btn.disabled = false;
-                }
-            } catch (e) {
-                console.error('Login error:', e);
-                errorMsg.innerText = "Connection Error! Please try again.";
-                errorMsg.classList.add('show');
-                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i><span>Login Now</span><i class="fas fa-arrow-right"></i>';
-                btn.disabled = false;
+            if (data.token) {
+                localStorage.setItem('token', data.token);
             }
+            if (data.user) {
+                localStorage.setItem('bot_user', JSON.stringify(data.user));
+            }
+            
+            // 🔥 DEBUG: Save වුණාද කියලා check කරන්න
+            console.log('✅ Saved bot_id:', localStorage.getItem('bot_id'));
+            
+            // ✅ Dashboard එකට යනවා
+            window.location.href = '/dashboard.html';
+        } else {
+            errorMsg.innerText = data.error || data.message || "Invalid credentials!";
+            errorMsg.classList.add('show');
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i><span>Login Now</span><i class="fas fa-arrow-right"></i>';
+            btn.disabled = false;
         }
+    } catch (e) {
+        console.error('Login error:', e);
+        errorMsg.innerText = "Connection Error! Please try again.";
+        errorMsg.classList.add('show');
+        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i><span>Login Now</span><i class="fas fa-arrow-right"></i>';
+        btn.disabled = false;
+    }
+}
     </script>
 
 </body>
