@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Command Builder | ZANTA-MINI</title>
+    <link rel="icon" href="./assets/logo.png" type="image/png">
+    <link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+    <!-- 🎯 Navigation -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <img src="./assets/logo.png" alt="ZANTA" height="40">
+            <span>Command Builder</span>
+        </div>
+        <div class="nav-links">
+            <a href="#builder" class="active">Build</a>
+            <a href="#commands">My Commands</a>
+            <a href="#docs">Docs</a>
+        </div>
+    </nav>
+
+    <!-- 🎯 Bot Selector -->
+    <section class="bot-selector">
+        <label>🤖 Bot Number:</label>
+        <input type="text" id="botNumber" placeholder="947xxxxxxxxx" maxlength="15">
+        <button onclick="loadCommands()">🔄 Load</button>
+    </section>
+
+    <!-- 🎯 Main Container -->
+    <main class="container">
+        <!-- 🎯 Builder Section -->
+        <section id="builder" class="section">
+            <h2>⚡ Create Custom Command</h2>
+            <div id="builderForm"></div>
+        </section>
+
+        <!-- 🎯 Commands List -->
+        <section id="commands" class="section">
+            <h2>📋 My Commands</h2>
+            <div id="commandsList"></div>
+        </section>
+    </main>
+
+    <!-- 🎯 Toast Notification -->
+    <div id="toast"></div>
+
+    <script src="./src/script.js" type="module"></script>
+</body>
+</html>
