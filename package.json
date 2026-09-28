@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "description": "Custom Command Builder for ZANTA-MINI WhatsApp Bot",
     "type": "module",
-    "main": "index.html",
+    "main": "server.js",
     "scripts": {
         "start": "node server.js",
         "dev": "nodemon server.js"
