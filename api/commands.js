@@ -1,6 +1,7 @@
 import express from 'express';
 import { UserCommand, connectDB } from './db.js';
 import { authMiddleware } from './middleware.js';
+import axios from 'axios';
 
 const router = express.Router();
 
