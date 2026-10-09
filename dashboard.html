@@ -23,10 +23,12 @@ body{font-family:'Inter',sans-serif;background:#0a0a0f;color:#fff;min-height:100
 .subtitle{font-size:.65rem;color:rgba(255,255,255,.3);letter-spacing:4px;text-transform:uppercase;margin-top:4px}
 .btn-add{padding:14px 24px;border-radius:60px;font-weight:700;font-size:.75rem;text-transform:uppercase;letter-spacing:1.5px;background:linear-gradient(135deg,#3b82f6,#06b6d4);color:#000;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:10px;transition:all .3s;box-shadow:0 4px 25px rgba(59,130,246,.2);text-decoration:none}
 .btn-add:hover{transform:translateY(-3px) scale(1.02);box-shadow:0 12px 40px rgba(59,130,246,.4)}
+.btn-logout{padding:12px 20px;border-radius:60px;font-weight:700;font-size:.7rem;text-transform:uppercase;letter-spacing:1.5px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.08);cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:all .3s;text-decoration:none}
+.btn-logout:hover{background:rgba(239,68,68,.15);border-color:#ef4444;color:#ef4444}
 .card{background:rgba(8,15,30,.65);backdrop-filter:blur(22px);border:1px solid rgba(0,150,255,.15);border-radius:24px;padding:24px;margin-bottom:16px;transition:all .3s}
 .card:hover{border-color:rgba(0,212,255,.3);transform:translateY(-2px)}
 .cmd-row{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
-.cmd-name{font-size:1.1rem;font-weight:700;color:#3b82f6;display:flex;align-items:center;gap:10px}
+.cmd-name{font-size:1.1rem;font-weight:700;color:#3b82f6;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .cmd-desc{font-size:.85rem;color:rgba(255,255,255,.5);margin-top:6px}
 .badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px}
 .badge.text{background:rgba(34,197,94,.15);color:#22c55e}
@@ -37,8 +39,24 @@ body{font-family:'Inter',sans-serif;background:#0a0a0f;color:#fff;min-height:100
 .icon-btn.del:hover{background:rgba(239,68,68,.2);border-color:#ef4444;color:#ef4444}
 .empty{text-align:center;padding:80px 24px;color:rgba(255,255,255,.3)}
 .empty i{font-size:3rem;margin-bottom:16px;opacity:.3}
+.empty p{font-size:.9rem}
 .loader{text-align:center;padding:40px;color:rgba(255,255,255,.3)}
-@media(max-width:480px){.title{font-size:1.5rem}.cmd-row{flex-direction:column;align-items:flex-start}}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:rgba(8,15,30,.65);backdrop-filter:blur(22px);border:1px solid rgba(0,150,255,.15);border-radius:20px;padding:18px}
+.stat-label{font-size:.6rem;color:rgba(255,255,255,.35);letter-spacing:2px;text-transform:uppercase;font-weight:600}
+.stat-value{font-size:1.6rem;font-weight:900;margin-top:6px;background:linear-gradient(135deg,#3b82f6,#06b6d4);-webkit-background-clip:text;background-clip:text;color:transparent}
+.notif{position:fixed;top:24px;right:24px;padding:14px 20px;background:rgba(8,15,30,.95);border:1px solid rgba(59,130,246,.3);border-radius:14px;font-size:.8rem;z-index:999;display:flex;align-items:center;gap:10px;transform:translateX(150%);transition:transform .4s;box-shadow:0 20px 40px rgba(0,0,0,.5)}
+.notif.show{transform:translateX(0)}
+.notif.success{border-color:rgba(34,197,94,.4)}
+.notif.success i{color:#22c55e}
+.notif.error{border-color:rgba(239,68,68,.4)}
+.notif.error i{color:#ef4444}
+.notif i{color:#3b82f6}
+@media(max-width:480px){
+  .title{font-size:1.5rem}
+  .cmd-row{flex-direction:column;align-items:flex-start}
+  .btn-logout{padding:10px 16px;font-size:.6rem}
+}
 </style>
 </head>
 <body>
@@ -52,7 +70,25 @@ body{font-family:'Inter',sans-serif;background:#0a0a0f;color:#fff;min-height:100
       <div class="title"><span class="blue">ZANTA</span>-MD</div>
       <div class="subtitle">Custom Commands</div>
     </div>
-    <a href="add-command.html" class="btn-add"><i class="fas fa-plus"></i> Add Command</a>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a href="add-command.html" class="btn-add"><i class="fas fa-plus"></i> Add Command</a>
+      <button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    </div>
+  </div>
+
+  <div class="stats-row" id="statsRow" style="display:none">
+    <div class="stat-card">
+      <div class="stat-label">Total</div>
+      <div class="stat-value" id="statTotal">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Text</div>
+      <div class="stat-value" id="statText">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">API</div>
+      <div class="stat-value" id="statApi">0</div>
+    </div>
   </div>
 
   <div id="listContainer">
@@ -60,8 +96,10 @@ body{font-family:'Inter',sans-serif;background:#0a0a0f;color:#fff;min-height:100
   </div>
 </div>
 
+<div class="notif" id="notif"><i class="fas fa-info-circle"></i><span id="notifText"></span></div>
+
 <script>
-// Stars
+// ==================== Stars ====================
 const sc = document.getElementById('stars');
 for (let i = 0; i < 80; i++) {
   const s = document.createElement('div'); s.className = 'star';
@@ -73,61 +111,145 @@ for (let i = 0; i < 80; i++) {
   sc.appendChild(s);
 }
 
-// Auth check
+// ==================== Auth check ====================
 const botId = localStorage.getItem('bot_id');
 const botPass = localStorage.getItem('bot_pass');
 if (!botId || !botPass) window.location.href = 'login.html';
 
-// API base - change this to your backend URL
+// ==================== Config ====================
 const BACKEND = 'https://zanta-web-auth.vercel.app';
 
+// ==================== Load commands ====================
 async function loadCommands() {
   const box = document.getElementById('listContainer');
   try {
-    const res = await fetch(`${BACKEND}/api/commands?id=${encodeURIComponent(botId)}&password=${encodeURIComponent(botPass)}`);
+    const url = `${BACKEND}/api/add-cmd?id=${encodeURIComponent(botId)}&password=${encodeURIComponent(botPass)}`;
+    const res = await fetch(url);
     const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Failed');
+
+    if (!data.success) throw new Error(data.error || 'Failed to load');
     const cmds = data.commands || [];
 
+    // stats
+    updateStats(cmds);
+
     if (!cmds.length) {
-      box.innerHTML = `<div class="card"><div class="empty"><i class="fas fa-inbox"></i><p>No commands yet. Click "Add Command" to create your first one.</p></div></div>`;
+      box.innerHTML = `<div class="card"><div class="empty">
+        <i class="fas fa-inbox"></i>
+        <p>No commands yet. Click "Add Command" to create your first one.</p>
+      </div></div>`;
       return;
     }
 
     box.innerHTML = cmds.map(c => `
       <div class="card">
         <div class="cmd-row">
-          <div>
+          <div style="flex:1;min-width:0">
             <div class="cmd-name">
               <i class="fas fa-terminal"></i> ${escapeHtml(c.name)}
               <span class="badge ${c.type === 'api' ? 'api' : 'text'}">${c.type === 'api' ? 'API' : 'TEXT'}</span>
             </div>
             <div class="cmd-desc">${escapeHtml(c.description || 'No description')}</div>
-            <div class="cmd-desc"><small>Aliases: ${(c.aliases || []).join(', ') || 'none'} · React: ${escapeHtml(c.react || '-')}</small></div>
+            <div class="cmd-desc"><small>
+              Aliases: ${(c.aliases || []).map(escapeHtml).join(', ') || 'none'} ·
+              React: ${escapeHtml(c.react || '-')}
+              ${c.type === 'api' ? ` · ${escapeHtml(c.apiMethod || 'GET')} ${escapeHtml(shortenUrl(c.apiUrl))}` : ''}
+            </small></div>
           </div>
           <div class="cmd-actions">
-            <button class="icon-btn" onclick="delCmd('${c._id}')" title="Delete"><i class="fas fa-trash"></i></button>
+            <button class="icon-btn del" onclick="delCmd('${c._id}')" title="Delete">
+              <i class="fas fa-trash"></i>
+            </button>
           </div>
         </div>
       </div>
     `).join('');
   } catch (e) {
-    box.innerHTML = `<div class="card"><div class="empty"><i class="fas fa-exclamation-triangle"></i><p>${escapeHtml(e.message)}</p></div></div>`;
+    box.innerHTML = `<div class="card"><div class="empty">
+      <i class="fas fa-exclamation-triangle"></i>
+      <p>${escapeHtml(e.message)}</p>
+    </div></div>`;
   }
 }
 
-async function delCmd(id) {
+// ==================== Delete command ====================
+async function delCmd(cmdId) {
   if (!confirm('Delete this command?')) return;
-  const res = await fetch(`${BACKEND}/api/commands/${id}?id=${encodeURIComponent(botId)}&password=${encodeURIComponent(botPass)}`, { method: 'DELETE' });
-  const data = await res.json();
-  if (data.success) loadCommands();
-  else alert(data.error || 'Delete failed');
+
+  try {
+    const res = await fetch(`${BACKEND}/api/add-cmd`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: botId,
+        password: botPass,
+        commandId: cmdId,
+      }),
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      notify('Command deleted', 'success');
+      loadCommands();
+    } else {
+      notify(data.error || 'Delete failed', 'error');
+    }
+  } catch (e) {
+    notify('Connection error', 'error');
+  }
 }
 
+// ==================== Logout ====================
+function logout() {
+  if (!confirm('Logout from dashboard?')) return;
+  localStorage.removeItem('bot_id');
+  localStorage.removeItem('bot_pass');
+  localStorage.removeItem('bot_settings');
+  window.location.href = 'login.html';
+}
+
+// ==================== Stats ====================
+function updateStats(cmds) {
+  const statsRow = document.getElementById('statsRow');
+  if (!cmds.length) { statsRow.style.display = 'none'; return; }
+  statsRow.style.display = 'grid';
+  document.getElementById('statTotal').textContent = cmds.length;
+  document.getElementById('statText').textContent = cmds.filter(c => c.type !== 'api').length;
+  document.getElementById('statApi').textContent = cmds.filter(c => c.type === 'api').length;
+}
+
+// ==================== Helpers ====================
 function escapeHtml(s) {
-  return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  return String(s || '').replace(/[&<>"']/g, m => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[m]));
 }
 
+function shortenUrl(u) {
+  if (!u) return '';
+  try {
+    const url = new URL(u);
+    return url.hostname + (url.pathname.length > 20 ? url.pathname.slice(0, 20) + '…' : url.pathname);
+  } catch {
+    return u.slice(0, 30);
+  }
+}
+
+let notifTimer;
+function notify(msg, type = 'info') {
+  const n = document.getElementById('notif');
+  const t = document.getElementById('notifText');
+  const icon = n.querySelector('i');
+  t.textContent = msg;
+  n.className = 'notif show ' + type;
+  icon.className = type === 'success' ? 'fas fa-check-circle'
+    : type === 'error' ? 'fas fa-exclamation-circle'
+    : 'fas fa-info-circle';
+  clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => n.classList.remove('show'), 3000);
+}
+
+// ==================== Init ====================
 loadCommands();
 </script>
 </body>
