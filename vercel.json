@@ -17,15 +17,15 @@
     },
     {
       "src": "/",
-      "dest": "/public/login.html"
+      "dest": "/login.html"
     },
     {
       "src": "/login",
-      "dest": "/public/login.html"
+      "dest": "/login.html"
     },
     {
       "src": "/dashboard",
-      "dest": "/public/dashboard.html"
+      "dest": "/dashboard.html"
     },
     {
       "src": "/(.*)",
