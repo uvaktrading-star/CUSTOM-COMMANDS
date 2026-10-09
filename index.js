@@ -1,17 +1,22 @@
-// api/index.js
-// This is just a health check endpoint.
-// Static HTML files are served automatically by Vercel.
+import express from 'express';
+import cors from 'cors';
 
-export default function handler(req, res) {
-  res.status(200).json({
-    ok: true,
-    service: 'CUSTOM-COMMANDS',
-    endpoints: [
-      'POST /api/auth',
-      'GET  /api/add-cmd?id=..&password=..',
-      'POST /api/add-cmd',
-      'DELETE /api/add-cmd',
-      'POST /api/api-validator'
-    ]
-  });
-}
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.get('/', (req, res) => {
+  res.sendFile(process.cwd() + '/login.html');
+});
+
+app.get('/api', (req, res) => {
+  res.json({ ok: true, service: 'CUSTOM-COMMANDS' });
+});
+
+app.post('/api/auth', async (req, res) => {
+  // login logic
+});
+
+// ... other routes
+
+export default app;
