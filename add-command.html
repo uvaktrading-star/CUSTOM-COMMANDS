@@ -376,19 +376,21 @@ for (let i = 0; i < 80; i++) {
 const botId = localStorage.getItem('bot_id');
 const botPass = localStorage.getItem('bot_pass');
 if (!botId || !botPass) window.location.href = 'login.html';
+
+// ============ Config ============
 const BACKEND = 'https://zanta-web-auth.vercel.app';
 
 // ============ State ============
 const state = {
   name: '', description: '', aliases: [], react: '',
   type: '', // 'text' | 'api'
-  mediaType: 'text', // for text branch
+  mediaType: 'text',
   textContent: '', mediaLink: '', mediaCaption: '',
   apiMethod: 'GET', apiUrl: '',
   hasQuery: false,
-  queries: [], // [{name, default}]
+  queries: [],
   apiTestResponse: null,
-  apiValues: [], // extracted values
+  apiValues: [],
   responseTemplate: ''
 };
 
@@ -408,10 +410,10 @@ function goToStep(n) {
 }
 
 function nextStep(from) {
-  // Validate current step
   if (from === 1) {
     const name = document.getElementById('cmdName').value.trim();
     if (!name) return notify('Command name is required', 'error');
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) return notify('Only letters, numbers, _ and - allowed', 'error');
     state.name = name;
     state.description = document.getElementById('cmdDesc').value.trim();
     state.aliases = document.getElementById('cmdAliases').value.split(',').map(a => a.trim()).filter(Boolean);
@@ -421,7 +423,6 @@ function nextStep(from) {
   else if (from === 2) {
     if (!state.type) return notify('Please select a command type', 'error');
     goToStep(3);
-    // Show correct branch
     document.getElementById('textBranch').classList.toggle('hidden', state.type !== 'text');
     document.getElementById('apiBranch').classList.toggle('hidden', state.type !== 'api');
   }
@@ -437,17 +438,15 @@ function nextStep(from) {
         state.mediaLink = link;
         state.mediaCaption = document.getElementById('mediaCaption').value.trim();
       }
-      // Text commands skip query step (4)
       goToStep(5);
       buildResponseStep();
     } else {
-      // API
       const url = document.getElementById('apiUrl').value.trim();
       if (!url) return notify('API URL is required', 'error');
+      try { new URL(url); } catch { return notify('Invalid URL format', 'error'); }
       state.apiMethod = document.getElementById('apiMethod').value;
       state.apiUrl = url;
       state.hasQuery = document.getElementById('hasQuery').checked;
-      // Sync queries from step 3 list
       syncQueriesFrom('queryList');
       if (state.hasQuery && !state.queries.length) {
         return notify('Add at least one query parameter', 'error');
@@ -587,21 +586,13 @@ async function testApi() {
   btn.innerHTML = '<span class="spinner"></span> Testing...';
 
   try {
-    // Build URL with query params
-    const finalUrl = new URL(url);
-    if (hasQuery) {
-      state.queries.forEach(q => {
-        if (q.name) finalUrl.searchParams.set(q.name, q.default || '');
-      });
-    }
-
-    const res = await fetch(`${BACKEND}/api/test-api`, {
+    const res = await fetch(`${BACKEND}/api/api-validator`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id: botId,
         password: botPass,
-        url: finalUrl.toString(),
+        url,
         method,
         queries: hasQuery ? state.queries : []
       })
@@ -612,11 +603,9 @@ async function testApi() {
 
     state.apiTestResponse = data.response;
 
-    // Show response
     document.getElementById('apiResponseBox').classList.remove('hidden');
     document.getElementById('apiResponsePre').textContent = JSON.stringify(data.response, null, 2);
 
-    // Extract values (flatten keys)
     const values = extractValues(data.response);
     state.apiValues = values;
 
@@ -639,7 +628,6 @@ function extractValues(obj, prefix = '') {
   if (obj === null || obj === undefined) return out;
   if (Array.isArray(obj)) {
     if (obj.length && typeof obj[0] === 'object') {
-      // extract from first item
       return extractValues(obj[0], prefix);
     }
     return out;
@@ -669,7 +657,6 @@ function buildResponseStep() {
   }
   ph.innerHTML = items.map(v => `<span class="value-chip" onclick="insertPlaceholder('\${${v}}')">\${${v}}</span>`).join('');
 
-  // Pre-fill default template
   const ta = document.getElementById('responseTemplate');
   if (!ta.value) {
     if (state.type === 'text') ta.value = '💬 ${content}';
@@ -710,8 +697,7 @@ async function sendChat() {
   addBubble('user', escapeHtml(msg));
   input.value = '';
 
-  // Simulate command processing
-  const lower = msg.toLowerCase().replace(/^[./!#]/, '');
+  const lower = msg.toLowerCase().replace(/^[./!#]/, '').split(' ')[0];
   const isMatch = lower === state.name.toLowerCase() || state.aliases.some(a => lower === a.toLowerCase());
 
   if (!isMatch) {
@@ -728,7 +714,6 @@ async function sendChat() {
       reply = reply.replace(/\$\{caption\}/g, escapeHtml(state.mediaCaption || ''));
       reply = reply.replace(/\$\{link\}/g, escapeHtml(state.mediaLink || ''));
     } else {
-      // API - use last test response
       const values = state.apiValues;
       const resp = state.apiTestResponse || {};
       values.forEach(v => {
@@ -753,17 +738,15 @@ function renderSummary() {
     aliases: state.aliases,
     react: state.react,
     type: state.type,
-    ...(state.type === 'text' ? {
-      mediaType: state.mediaType,
-      content: state.mediaType === 'text' ? state.textContent : state.mediaLink,
-      caption: state.mediaCaption
-    } : {
-      method: state.apiMethod,
-      url: state.apiUrl,
-      queries: state.queries,
-      responseTemplate: state.responseTemplate
-    }),
-    ...(state.type === 'text' ? { responseTemplate: state.responseTemplate } : {})
+    mediaType: state.mediaType,
+    content: state.mediaType === 'text' ? state.textContent : null,
+    mediaLink: state.mediaLink,
+    mediaCaption: state.mediaCaption,
+    apiMethod: state.apiMethod,
+    apiUrl: state.apiUrl,
+    hasQuery: state.hasQuery,
+    queries: state.queries,
+    responseTemplate: state.responseTemplate
   };
   document.getElementById('summaryPre').textContent = JSON.stringify(summary, null, 2);
 }
@@ -796,7 +779,7 @@ async function submitCommand() {
   };
 
   try {
-    const res = await fetch(`${BACKEND}/api/commands`, {
+    const res = await fetch(`${BACKEND}/api/add-cmd`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
