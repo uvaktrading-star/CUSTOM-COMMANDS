@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZANTA-MD | Add Command</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#0a0a0f;color:#fff;min-height:100vh;padding:80px 16px 100px;overflow-x:hidden}
+.stars-container{position:fixed;inset:0;z-index:0;background:radial-gradient(circle at center,#0a1a2d 0%,#000 100%);pointer-events:none}
+.star{position:absolute;background:#b6e3ff;border-radius:50%;opacity:.6;animation:move linear infinite}
+@keyframes move{0%{transform:translateY(100vh) scale(0);opacity:0}10%{opacity:.8}90%{opacity:.8}100%{transform:translateY(-10vh) scale(1);opacity:0}}
+.tech-grid{position:fixed;inset:0;z-index:1;pointer-events:none;background-image:linear-gradient(rgba(0,100,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,100,255,.04) 1px,transparent 1px);background-size:55px 55px}
+.blob-1{position:fixed;width:500px;height:500px;background:radial-gradient(circle,#3b82f6,#06b6d4);filter:blur(120px);border-radius:50%;opacity:.06;top:-150px;right:-150px;animation:floatBlob 20s infinite alternate;z-index:1;pointer-events:none}
+@keyframes floatBlob{0%{transform:translate(0,0) scale(1)}100%{transform:translate(-100px,100px) scale(1.3)}}
+
+.wrap{position:relative;z-index:10;max-width:640px;margin:0 auto}
+.title{font-size:1.8rem;font-weight:900;letter-spacing:-.5px;text-align:center}
+.title .blue{background:linear-gradient(135deg,#3b82f6,#06b6d4);-webkit-background-clip:text;background-clip:text;color:transparent}
+.subtitle{font-size:.6rem;color:rgba(255,255,255,.3);letter-spacing:4px;text-transform:uppercase;margin:4px 0 24px;text-align:center}
+
+/* Stepper */
+.stepper{display:flex;justify-content:space-between;margin-bottom:24px;position:relative;padding:0 8px}
+.stepper::before{content:'';position:absolute;top:14px;left:20px;right:20px;height:2px;background:rgba(255,255,255,.06);z-index:0}
+.step-dot{position:relative;z-index:1;width:30px;height:30px;border-radius:50%;background:#0a0a0f;border:2px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:rgba(255,255,255,.3);transition:all .3s}
+.step-dot.active{border-color:#3b82f6;color:#3b82f6;box-shadow:0 0 20px rgba(59,130,246,.4)}
+.step-dot.done{border-color:#22c55e;background:#22c55e;color:#000}
+.step-label{position:absolute;top:36px;left:50%;transform:translateX(-50%);font-size:.55rem;white-space:nowrap;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.step-dot.active .step-label{color:#3b82f6}
+.step-dot.done .step-label{color:#22c55e}
+
+.card{background:rgba(8,15,30,.7);backdrop-filter:blur(22px);border:1px solid rgba(0,150,255,.15);border-radius:24px;padding:28px 24px;box-shadow:0 30px 60px -15px rgba(0,0,0,.6)}
+.step-content{display:none;animation:fadeIn .4s}
+.step-content.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.step-title{font-size:1.1rem;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.step-title i{color:#3b82f6}
+.step-desc{font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:20px}
+
+.input-group{margin-bottom:16px}
+.input-group label{display:block;font-size:.65rem;font-weight:600;color:rgba(255,255,255,.4);margin-bottom:6px;margin-left:4px;letter-spacing:1px;text-transform:uppercase}
+.input-group label i{margin-right:6px;color:#3b82f6}
+.custom-input,.custom-select,.custom-textarea{width:100%;padding:14px 18px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.06);border-radius:14px;color:#fff;font-size:.9rem;font-weight:500;outline:none;transition:all .3s;font-family:'Inter',sans-serif}
+.custom-textarea{min-height:90px;resize:vertical;border-radius:14px}
+.custom-input:focus,.custom-select:focus,.custom-textarea:focus{border-color:#3b82f6;box-shadow:0 0 30px rgba(59,130,246,.06);background:rgba(0,0,0,.4)}
+.custom-input::placeholder,.custom-textarea::placeholder{color:rgba(255,255,255,.15)}
+.custom-select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg fill='%233b82f6' height='14' viewBox='0 0 24 24' width='14' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");background-repeat:no-repeat;background-position:right 16px center}
+.custom-select option{background:#0a0a0f}
+
+/* Choice cards */
+.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.choice{padding:20px 16px;border-radius:16px;border:2px solid rgba(255,255,255,.08);background:rgba(0,0,0,.2);cursor:pointer;text-align:center;transition:all .3s}
+.choice:hover{border-color:rgba(59,130,246,.4)}
+.choice.selected{border-color:#3b82f6;background:rgba(59,130,246,.1);box-shadow:0 0 30px rgba(59,130,246,.15)}
+.choice i{font-size:1.5rem;color:#3b82f6;margin-bottom:8px;display:block}
+.choice .name{font-weight:700;font-size:.85rem}
+.choice .hint{font-size:.65rem;color:rgba(255,255,255,.4);margin-top:4px}
+
+/* Buttons */
+.btn-row{display:flex;gap:12px;margin-top:24px}
+.btn{flex:1;padding:16px 24px;border-radius:60px;font-weight:700;font-size:.75rem;text-transform:uppercase;letter-spacing:1.5px;cursor:pointer;border:none;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .3s;font-family:'Inter',sans-serif}
+.btn-primary{background:linear-gradient(135deg,#3b82f6,#06b6d4);color:#000;box-shadow:0 4px 25px rgba(59,130,246,.2)}
+.btn-primary:hover{transform:translateY(-3px) scale(1.02);box-shadow:0 12px 40px rgba(59,130,246,.4)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-ghost{background:rgba(255,255,255,.04);color:#fff;border:1px solid rgba(255,255,255,.08)}
+.btn-ghost:hover{background:rgba(255,255,255,.08)}
+.btn-success{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff}
+.btn-success:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(34,197,94,.4)}
+
+/* Query rows */
+.query-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center}
+.query-row .custom-input{padding:10px 14px;font-size:.8rem}
+.icon-btn{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.3);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;font-size:.75rem}
+.icon-btn.del:hover{background:rgba(239,68,68,.2);border-color:#ef4444;color:#ef4444}
+.icon-btn.add:hover{background:rgba(59,130,246,.2);border-color:#3b82f6;color:#3b82f6}
+
+/* Checkbox */
+.check-row{display:flex;align-items:center;gap:10px;margin:14px 0;cursor:pointer;user-select:none}
+.check-row input{display:none}
+.check-box{width:22px;height:22px;border-radius:6px;border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;transition:all .3s;background:rgba(0,0,0,.3)}
+.check-row input:checked + .check-box{background:#3b82f6;border-color:#3b82f6}
+.check-box i{font-size:.7rem;color:#000;opacity:0}
+.check-row input:checked + .check-box i{opacity:1}
+.check-label{font-size:.85rem;font-weight:600}
+
+/* Response output */
+.response-box{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px;margin-top:12px;max-height:280px;overflow-y:auto}
+.response-box pre{font-family:'JetBrains Mono',monospace;font-size:.75rem;color:#22c55e;white-space:pre-wrap;word-break:break-word}
+.value-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.value-chip{padding:6px 12px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);border-radius:20px;font-size:.7rem;font-weight:600;color:#3b82f6;cursor:pointer;transition:all .2s}
+.value-chip:hover{background:rgba(59,130,246,.3)}
+
+/* Fake chat */
+.chat-window{background:#0b141a;border-radius:16px;padding:16px;margin-top:12px;max-height:400px;overflow-y:auto;background-image:radial-gradient(rgba(255,255,255,.02) 1px,transparent 1px);background-size:20px 20px}
+.chat-bubble{max-width:80%;padding:10px 14px;border-radius:12px;font-size:.85rem;margin-bottom:10px;word-wrap:break-word;position:relative;animation:bubbleIn .3s}
+@keyframes bubbleIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+.chat-bubble.user{background:#005c4b;margin-left:auto;border-top-right-radius:4px}
+.chat-bubble.bot{background:#202c33;margin-right:auto;border-top-left-radius:4px}
+.chat-bubble .time{font-size:.6rem;color:rgba(255,255,255,.5);text-align:right;margin-top:4px}
+.chat-input-row{display:flex;gap:8px;margin-top:12px}
+.chat-input-row .custom-input{flex:1}
+.chat-input-row .icon-btn{width:44px;height:44px;background:#005c4b;border-color:#005c4b;color:#fff}
+.chat-input-row .icon-btn:hover{background:#00a884}
+
+/* Notification */
+.notif{position:fixed;top:24px;right:24px;padding:14px 20px;background:rgba(8,15,30,.95);border:1px solid rgba(59,130,246,.3);border-radius:14px;font-size:.8rem;z-index:999;display:flex;align-items:center;gap:10px;transform:translateX(150%);transition:transform .4s;box-shadow:0 20px 40px rgba(0,0,0,.5)}
+.notif.show{transform:translateX(0)}
+.notif.success{border-color:rgba(34,197,94,.4)}
+.notif.success i{color:#22c55e}
+.notif.error{border-color:rgba(239,68,68,.4)}
+.notif.error i{color:#ef4444}
+.notif i{color:#3b82f6}
+
+/* Loader */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.hidden{display:none !important}
+
+@media(max-width:480px){
+  .title{font-size:1.4rem}
+  .card{padding:20px 16px}
+  .query-row{grid-template-columns:1fr 1fr}
+  .query-row .icon-btn{grid-column:span 2}
+  .step-label{display:none}
+}
+</style>
+</head>
+<body>
+<div class="stars-container" id="stars"></div>
+<div class="tech-grid"></div>
+<div class="blob-1"></div>
+
+<div class="wrap">
+  <div class="title"><span class="blue">Add</span> Command</div>
+  <div class="subtitle">Create · Test · Deploy</div>
+
+  <!-- Stepper -->
+  <div class="stepper">
+    <div class="step-dot active" data-step="1">1<span class="step-label">Info</span></div>
+    <div class="step-dot" data-step="2">2<span class="step-label">Type</span></div>
+    <div class="step-dot" data-step="3">3<span class="step-label">Content</span></div>
+    <div class="step-dot" data-step="4">4<span class="step-label">Query</span></div>
+    <div class="step-dot" data-step="5">5<span class="step-label">Message</span></div>
+    <div class="step-dot" data-step="6">6<span class="step-label">Test</span></div>
+    <div class="step-dot" data-step="7">7<span class="step-label">Submit</span></div>
+  </div>
+
+  <div class="card">
+
+    <!-- STEP 1: Basic Info -->
+    <div class="step-content active" data-step="1">
+      <div class="step-title"><i class="fas fa-info-circle"></i> Basic Info</div>
+      <div class="step-desc">Give your command a name, description and options.</div>
+
+      <div class="input-group">
+        <label><i class="fas fa-terminal"></i> Command Name</label>
+        <input type="text" id="cmdName" class="custom-input" placeholder="e.g. weather">
+      </div>
+      <div class="input-group">
+        <label><i class="fas fa-align-left"></i> Description</label>
+        <input type="text" id="cmdDesc" class="custom-input" placeholder="e.g. Get weather for a city">
+      </div>
+      <div class="input-group">
+        <label><i class="fas fa-tags"></i> Aliases (comma separated)</label>
+        <input type="text" id="cmdAliases" class="custom-input" placeholder="e.g. w, wea">
+      </div>
+      <div class="input-group">
+        <label><i class="fas fa-smile"></i> React Emoji</label>
+        <input type="text" id="cmdReact" class="custom-input" placeholder="e.g. 🌤️">
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="nextStep(1)">Next <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Type -->
+    <div class="step-content" data-step="2">
+      <div class="step-title"><i class="fas fa-cube"></i> Command Type</div>
+      <div class="step-desc">Choose how your command should respond.</div>
+
+      <div class="choice-grid">
+        <div class="choice" id="typeText" onclick="selectType('text')">
+          <i class="fas fa-comment-dots"></i>
+          <div class="name">Text Response</div>
+          <div class="hint">Static text, audio, video</div>
+        </div>
+        <div class="choice" id="typeApi" onclick="selectType('api')">
+          <i class="fas fa-cloud"></i>
+          <div class="name">API Response</div>
+          <div class="hint">GET / POST request</div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="prevStep(2)"><i class="fas fa-arrow-left"></i> Back</button>
+        <button class="btn btn-primary" onclick="nextStep(2)">Next <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Content (Text or API URL) -->
+    <div class="step-content" data-step="3">
+      <!-- Text branch -->
+      <div id="textBranch" class="hidden">
+        <div class="step-title"><i class="fas fa-comment-dots"></i> Text Response Setup</div>
+        <div class="step-desc">Pick what kind of response this command sends.</div>
+
+        <div class="choice-grid" style="grid-template-columns:1fr 1fr 1fr">
+          <div class="choice" id="mediaText" onclick="selectMedia('text')">
+            <i class="fas fa-font"></i><div class="name">Text</div>
+          </div>
+          <div class="choice" id="mediaAudio" onclick="selectMedia('audio')">
+            <i class="fas fa-music"></i><div class="name">Audio</div>
+          </div>
+          <div class="choice" id="mediaVideo" onclick="selectMedia('video')">
+            <i class="fas fa-video"></i><div class="name">Video</div>
+          </div>
+        </div>
+
+        <div class="input-group" id="textContentGroup">
+          <label><i class="fas fa-pen"></i> Text Content</label>
+          <textarea id="textContent" class="custom-textarea" placeholder="Type your reply message..."></textarea>
+        </div>
+
+        <div class="input-group hidden" id="mediaLinkGroup">
+          <label><i class="fas fa-link"></i> Media URL</label>
+          <input type="text" id="mediaLink" class="custom-input" placeholder="https://...">
+        </div>
+
+        <div class="input-group hidden" id="mediaCaptionGroup">
+          <label><i class="fas fa-pen"></i> Caption (optional)</label>
+          <textarea id="mediaCaption" class="custom-textarea" placeholder="Caption..."></textarea>
+        </div>
+      </div>
+
+      <!-- API branch -->
+      <div id="apiBranch" class="hidden">
+        <div class="step-title"><i class="fas fa-cloud"></i> API Setup</div>
+        <div class="step-desc">Configure the API request details.</div>
+
+        <div class="input-group">
+          <label><i class="fas fa-exchange-alt"></i> Method</label>
+          <select id="apiMethod" class="custom-select">
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label><i class="fas fa-link"></i> API URL</label>
+          <input type="text" id="apiUrl" class="custom-input" placeholder="https://api.example.com/data">
+        </div>
+
+        <label class="check-row" onclick="toggleQuery()">
+          <input type="checkbox" id="hasQuery">
+          <span class="check-box"><i class="fas fa-check"></i></span>
+          <span class="check-label">Have query parameters</span>
+        </label>
+
+        <div id="querySection" class="hidden">
+          <div class="input-group">
+            <label><i class="fas fa-key"></i> Query Parameters</label>
+            <div id="queryList"></div>
+            <button class="icon-btn add" onclick="addQueryRow()" style="width:auto;padding:0 16px;border-radius:20px;height:36px;margin-top:8px"><i class="fas fa-plus"></i> Add Query</button>
+          </div>
+        </div>
+
+        <div class="btn-row" style="margin-top:16px">
+          <button class="btn btn-primary" id="testApiBtn" onclick="testApi()">
+            <i class="fas fa-flask"></i> Test API
+          </button>
+        </div>
+
+        <div id="apiResponseBox" class="hidden">
+          <label style="font-size:.65rem;color:rgba(255,255,255,.4);letter-spacing:1px;text-transform:uppercase;display:block;margin-top:16px">Response Preview</label>
+          <div class="response-box"><pre id="apiResponsePre"></pre></div>
+          <label style="font-size:.65rem;color:rgba(255,255,255,.4);letter-spacing:1px;text-transform:uppercase;display:block;margin-top:16px">Available Values (click to copy)</label>
+          <div class="value-list" id="apiValues"></div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="prevStep(3)"><i class="fas fa-arrow-left"></i> Back</button>
+        <button class="btn btn-primary" onclick="nextStep(3)">Next <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+
+    <!-- STEP 4: Query (only if API) -->
+    <div class="step-content" data-step="4">
+      <div class="step-title"><i class="fas fa-key"></i> Query Parameters</div>
+      <div class="step-desc">Define each query parameter with a default value.</div>
+      <div id="queryListStep4"></div>
+      <button class="icon-btn add" onclick="addQueryRowStep4()" style="width:auto;padding:0 16px;border-radius:20px;height:36px;margin-top:8px"><i class="fas fa-plus"></i> Add Query</button>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="prevStep(4)"><i class="fas fa-arrow-left"></i> Back</button>
+        <button class="btn btn-primary" onclick="nextStep(4)">Next <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+
+    <!-- STEP 5: Response Message Builder -->
+    <div class="step-content" data-step="5">
+      <div class="step-title"><i class="fas fa-edit"></i> Response Message</div>
+      <div class="step-desc">Build your response using placeholders like <code style="color:#3b82f6">${content}</code>, <code style="color:#3b82f6">${title}</code>, etc.</div>
+
+      <div class="input-group">
+        <label><i class="fas fa-pen"></i> Message Template</label>
+        <textarea id="responseTemplate" class="custom-textarea" style="min-height:130px" placeholder="💬 ${content}"></textarea>
+      </div>
+
+      <label style="font-size:.65rem;color:rgba(255,255,255,.4);letter-spacing:1px;text-transform:uppercase;display:block;margin-top:8px">Available Placeholders</label>
+      <div class="value-list" id="placeholderList"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="prevStep(5)"><i class="fas fa-arrow-left"></i> Back</button>
+        <button class="btn btn-primary" onclick="nextStep(5)">Next <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+
+    <!-- STEP 6: Fake Chat Test -->
+    <div class="step-content" data-step="6">
+      <div class="step-title"><i class="fas fa-comments"></i> Test Command</div>
+      <div class="step-desc">Send a message below to see how your command responds.</div>
+
+      <div class="chat-window" id="chatWindow"></div>
+
+      <div class="chat-input-row">
+        <input type="text" id="chatInput" class="custom-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="icon-btn" onclick="sendChat()"><i class="fas fa-paper-plane"></i></button>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="prevStep(6)"><i class="fas fa-arrow-left"></i> Back</button>
+        <button class="btn btn-primary" onclick="nextStep(6)">Next <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+
+    <!-- STEP 7: Submit -->
+    <div class="step-content" data-step="7">
+      <div class="step-title"><i class="fas fa-check-circle"></i> Confirm & Submit</div>
+      <div class="step-desc">Review your command before saving.</div>
+
+      <div class="response-box">
+        <pre id="summaryPre"></pre>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="prevStep(7)"><i class="fas fa-arrow-left"></i> Back</button>
+        <button class="btn btn-success" id="submitBtn" onclick="submitCommand()"><i class="fas fa-save"></i> Save Command</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="notif" id="notif"><i class="fas fa-info-circle"></i><span id="notifText"></span></div>
+
+<script>
+// ============ Stars ============
+const sc = document.getElementById('stars');
+for (let i = 0; i < 80; i++) {
+  const s = document.createElement('div'); s.className = 'star';
+  const sz = Math.random() * 2.5 + 1;
+  s.style.width = sz + 'px'; s.style.height = sz + 'px';
+  s.style.left = Math.random() * 100 + '%'; s.style.top = Math.random() * 100 + '%';
+  s.style.animationDuration = Math.random() * 5 + 3 + 's';
+  s.style.animationDelay = Math.random() * 8 + 's';
+  sc.appendChild(s);
+}
+
+// ============ Auth ============
+const botId = localStorage.getItem('bot_id');
+const botPass = localStorage.getItem('bot_pass');
+if (!botId || !botPass) window.location.href = 'login.html';
+const BACKEND = 'https://zanta-web-auth.vercel.app';
+
+// ============ State ============
+const state = {
+  name: '', description: '', aliases: [], react: '',
+  type: '', // 'text' | 'api'
+  mediaType: 'text', // for text branch
+  textContent: '', mediaLink: '', mediaCaption: '',
+  apiMethod: 'GET', apiUrl: '',
+  hasQuery: false,
+  queries: [], // [{name, default}]
+  apiTestResponse: null,
+  apiValues: [], // extracted values
+  responseTemplate: ''
+};
+
+let currentStep = 1;
+
+// ============ Step navigation ============
+function goToStep(n) {
+  document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
+  document.querySelector(`.step-content[data-step="${n}"]`).classList.add('active');
+  document.querySelectorAll('.step-dot').forEach(el => {
+    const s = +el.dataset.step;
+    el.classList.toggle('active', s === n);
+    el.classList.toggle('done', s < n);
+  });
+  currentStep = n;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function nextStep(from) {
+  // Validate current step
+  if (from === 1) {
+    const name = document.getElementById('cmdName').value.trim();
+    if (!name) return notify('Command name is required', 'error');
+    state.name = name;
+    state.description = document.getElementById('cmdDesc').value.trim();
+    state.aliases = document.getElementById('cmdAliases').value.split(',').map(a => a.trim()).filter(Boolean);
+    state.react = document.getElementById('cmdReact').value.trim();
+    goToStep(2);
+  }
+  else if (from === 2) {
+    if (!state.type) return notify('Please select a command type', 'error');
+    goToStep(3);
+    // Show correct branch
+    document.getElementById('textBranch').classList.toggle('hidden', state.type !== 'text');
+    document.getElementById('apiBranch').classList.toggle('hidden', state.type !== 'api');
+  }
+  else if (from === 3) {
+    if (state.type === 'text') {
+      if (state.mediaType === 'text') {
+        const t = document.getElementById('textContent').value.trim();
+        if (!t) return notify('Text content is required', 'error');
+        state.textContent = t;
+      } else {
+        const link = document.getElementById('mediaLink').value.trim();
+        if (!link) return notify('Media link is required', 'error');
+        state.mediaLink = link;
+        state.mediaCaption = document.getElementById('mediaCaption').value.trim();
+      }
+      // Text commands skip query step (4)
+      goToStep(5);
+      buildResponseStep();
+    } else {
+      // API
+      const url = document.getElementById('apiUrl').value.trim();
+      if (!url) return notify('API URL is required', 'error');
+      state.apiMethod = document.getElementById('apiMethod').value;
+      state.apiUrl = url;
+      state.hasQuery = document.getElementById('hasQuery').checked;
+      // Sync queries from step 3 list
+      syncQueriesFrom('queryList');
+      if (state.hasQuery && !state.queries.length) {
+        return notify('Add at least one query parameter', 'error');
+      }
+      if (!state.apiTestResponse) return notify('Please test the API first', 'error');
+      goToStep(4);
+      renderQueryStep4();
+    }
+  }
+  else if (from === 4) {
+    syncQueriesFrom('queryListStep4');
+    goToStep(5);
+    buildResponseStep();
+  }
+  else if (from === 5) {
+    const t = document.getElementById('responseTemplate').value.trim();
+    if (!t) return notify('Response message is required', 'error');
+    state.responseTemplate = t;
+    goToStep(6);
+    initChat();
+  }
+  else if (from === 6) {
+    goToStep(7);
+    renderSummary();
+  }
+}
+
+function prevStep(from) {
+  if (from === 7) return goToStep(6);
+  if (from === 6) return goToStep(5);
+  if (from === 5) {
+    if (state.type === 'text') return goToStep(3);
+    return goToStep(4);
+  }
+  if (from === 4) return goToStep(3);
+  if (from === 3) return goToStep(2);
+  if (from === 2) return goToStep(1);
+}
+
+// ============ Step 2: Type selection ============
+function selectType(t) {
+  state.type = t;
+  document.getElementById('typeText').classList.toggle('selected', t === 'text');
+  document.getElementById('typeApi').classList.toggle('selected', t === 'api');
+}
+
+// ============ Step 3: Media selection ============
+function selectMedia(m) {
+  state.mediaType = m;
+  ['text','audio','video'].forEach(k => {
+    document.getElementById('media' + k.charAt(0).toUpperCase() + k.slice(1)).classList.toggle('selected', k === m);
+  });
+  document.getElementById('textContentGroup').classList.toggle('hidden', m !== 'text');
+  document.getElementById('mediaLinkGroup').classList.toggle('hidden', m === 'text');
+  document.getElementById('mediaCaptionGroup').classList.toggle('hidden', m === 'text');
+}
+
+// ============ Query handling ============
+function toggleQuery() {
+  setTimeout(() => {
+    const checked = document.getElementById('hasQuery').checked;
+    state.hasQuery = checked;
+    document.getElementById('querySection').classList.toggle('hidden', !checked);
+    if (checked && !document.querySelector('#queryList .query-row')) {
+      addQueryRow();
+    }
+  }, 0);
+}
+
+function addQueryRow() {
+  const wrap = document.getElementById('queryList');
+  const row = document.createElement('div');
+  row.className = 'query-row';
+  row.innerHTML = `
+    <input type="text" class="custom-input q-name" placeholder="Query name (e.g. city)">
+    <input type="text" class="custom-input q-default" placeholder="Default value">
+    <button class="icon-btn del" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+  `;
+  wrap.appendChild(row);
+}
+
+function addQueryRowStep4() {
+  const wrap = document.getElementById('queryListStep4');
+  const row = document.createElement('div');
+  row.className = 'query-row';
+  row.innerHTML = `
+    <input type="text" class="custom-input q-name" placeholder="Query name">
+    <input type="text" class="custom-input q-default" placeholder="Default value">
+    <button class="icon-btn del" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+  `;
+  wrap.appendChild(row);
+}
+
+function syncQueriesFrom(containerId) {
+  const rows = document.querySelectorAll(`#${containerId} .query-row`);
+  const arr = [];
+  rows.forEach(r => {
+    const n = r.querySelector('.q-name').value.trim();
+    const d = r.querySelector('.q-default').value.trim();
+    if (n) arr.push({ name: n, default: d });
+  });
+  state.queries = arr;
+}
+
+function renderQueryStep4() {
+  const wrap = document.getElementById('queryListStep4');
+  wrap.innerHTML = '';
+  if (!state.queries.length) {
+    addQueryRowStep4();
+    return;
+  }
+  state.queries.forEach(q => {
+    const row = document.createElement('div');
+    row.className = 'query-row';
+    row.innerHTML = `
+      <input type="text" class="custom-input q-name" value="${escapeAttr(q.name)}" placeholder="Query name">
+      <input type="text" class="custom-input q-default" value="${escapeAttr(q.default)}" placeholder="Default value">
+      <button class="icon-btn del" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+    `;
+    wrap.appendChild(row);
+  });
+}
+
+// ============ API Test ============
+async function testApi() {
+  const btn = document.getElementById('testApiBtn');
+  const url = document.getElementById('apiUrl').value.trim();
+  const method = document.getElementById('apiMethod').value;
+  const hasQuery = document.getElementById('hasQuery').checked;
+
+  if (!url) return notify('Enter API URL first', 'error');
+
+  syncQueriesFrom('queryList');
+  if (hasQuery && !state.queries.length) return notify('Add at least one query', 'error');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Testing...';
+
+  try {
+    // Build URL with query params
+    const finalUrl = new URL(url);
+    if (hasQuery) {
+      state.queries.forEach(q => {
+        if (q.name) finalUrl.searchParams.set(q.name, q.default || '');
+      });
+    }
+
+    const res = await fetch(`${BACKEND}/api/test-api`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: botId,
+        password: botPass,
+        url: finalUrl.toString(),
+        method,
+        queries: hasQuery ? state.queries : []
+      })
+    });
+
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Request failed');
+
+    state.apiTestResponse = data.response;
+
+    // Show response
+    document.getElementById('apiResponseBox').classList.remove('hidden');
+    document.getElementById('apiResponsePre').textContent = JSON.stringify(data.response, null, 2);
+
+    // Extract values (flatten keys)
+    const values = extractValues(data.response);
+    state.apiValues = values;
+
+    const valBox = document.getElementById('apiValues');
+    valBox.innerHTML = values.length
+      ? values.map(v => `<span class="value-chip" onclick="copyText('\${${v}}')">\${${v}}</span>`).join('')
+      : '<span style="color:rgba(255,255,255,.3);font-size:.75rem">No keys found</span>';
+
+    notify('API tested successfully', 'success');
+  } catch (e) {
+    notify(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-flask"></i> Test API';
+  }
+}
+
+function extractValues(obj, prefix = '') {
+  const out = [];
+  if (obj === null || obj === undefined) return out;
+  if (Array.isArray(obj)) {
+    if (obj.length && typeof obj[0] === 'object') {
+      // extract from first item
+      return extractValues(obj[0], prefix);
+    }
+    return out;
+  }
+  if (typeof obj === 'object') {
+    for (const k of Object.keys(obj)) {
+      const v = obj[k];
+      const path = prefix ? `${prefix}.${k}` : k;
+      if (v !== null && typeof v === 'object') {
+        out.push(...extractValues(v, path));
+      } else {
+        out.push(path);
+      }
+    }
+  }
+  return out;
+}
+
+// ============ Step 5: Response template ============
+function buildResponseStep() {
+  const ph = document.getElementById('placeholderList');
+  let items = [];
+  if (state.type === 'text') {
+    items = ['content', 'caption', 'link'];
+  } else {
+    items = state.apiValues.length ? state.apiValues : ['content'];
+  }
+  ph.innerHTML = items.map(v => `<span class="value-chip" onclick="insertPlaceholder('\${${v}}')">\${${v}}</span>`).join('');
+
+  // Pre-fill default template
+  const ta = document.getElementById('responseTemplate');
+  if (!ta.value) {
+    if (state.type === 'text') ta.value = '💬 ${content}';
+    else ta.value = '💬 ${' + (items[0] || 'content') + '}';
+  }
+}
+
+function insertPlaceholder(text) {
+  const ta = document.getElementById('responseTemplate');
+  const start = ta.selectionStart;
+  const end = ta.selectionEnd;
+  ta.value = ta.value.slice(0, start) + text + ta.value.slice(end);
+  ta.focus();
+  ta.selectionStart = ta.selectionEnd = start + text.length;
+}
+
+// ============ Step 6: Fake chat ============
+function initChat() {
+  const cw = document.getElementById('chatWindow');
+  cw.innerHTML = '';
+  addBubble('bot', `Command "<b>${escapeHtml(state.name)}</b>" is ready. Send a message to test.`);
+}
+
+function addBubble(who, html) {
+  const cw = document.getElementById('chatWindow');
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const div = document.createElement('div');
+  div.className = `chat-bubble ${who}`;
+  div.innerHTML = `${html}<div class="time">${time} ${who === 'user' ? '<i class="fas fa-check-double"></i>' : ''}</div>`;
+  cw.appendChild(div);
+  cw.scrollTop = cw.scrollHeight;
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  addBubble('user', escapeHtml(msg));
+  input.value = '';
+
+  // Simulate command processing
+  const lower = msg.toLowerCase().replace(/^[./!#]/, '');
+  const isMatch = lower === state.name.toLowerCase() || state.aliases.some(a => lower === a.toLowerCase());
+
+  if (!isMatch) {
+    setTimeout(() => addBubble('bot', `<i style="color:rgba(255,255,255,.4)">Unknown command. Try "${escapeHtml(state.name)}"</i>`), 400);
+    return;
+  }
+
+  setTimeout(async () => {
+    let reply = state.responseTemplate;
+
+    if (state.type === 'text') {
+      const content = state.mediaType === 'text' ? state.textContent : (state.mediaCaption || '');
+      reply = reply.replace(/\$\{content\}/g, escapeHtml(content));
+      reply = reply.replace(/\$\{caption\}/g, escapeHtml(state.mediaCaption || ''));
+      reply = reply.replace(/\$\{link\}/g, escapeHtml(state.mediaLink || ''));
+    } else {
+      // API - use last test response
+      const values = state.apiValues;
+      const resp = state.apiTestResponse || {};
+      values.forEach(v => {
+        const val = getNestedValue(resp, v);
+        reply = reply.replace(new RegExp(`\\$\\{${escapeRegex(v)}\\}`, 'g'), escapeHtml(String(val ?? '')));
+      });
+    }
+
+    addBubble('bot', reply);
+  }, 600);
+}
+
+function getNestedValue(obj, path) {
+  return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
+}
+
+// ============ Step 7: Summary & Submit ============
+function renderSummary() {
+  const summary = {
+    name: state.name,
+    description: state.description,
+    aliases: state.aliases,
+    react: state.react,
+    type: state.type,
+    ...(state.type === 'text' ? {
+      mediaType: state.mediaType,
+      content: state.mediaType === 'text' ? state.textContent : state.mediaLink,
+      caption: state.mediaCaption
+    } : {
+      method: state.apiMethod,
+      url: state.apiUrl,
+      queries: state.queries,
+      responseTemplate: state.responseTemplate
+    }),
+    ...(state.type === 'text' ? { responseTemplate: state.responseTemplate } : {})
+  };
+  document.getElementById('summaryPre').textContent = JSON.stringify(summary, null, 2);
+}
+
+async function submitCommand() {
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="border-top-color:#fff"></span> Saving...';
+
+  const payload = {
+    id: botId,
+    password: botPass,
+    command: {
+      name: state.name,
+      description: state.description,
+      aliases: state.aliases,
+      react: state.react,
+      type: state.type,
+      mediaType: state.mediaType,
+      content: state.mediaType === 'text' ? state.textContent : null,
+      mediaLink: state.mediaLink,
+      mediaCaption: state.mediaCaption,
+      apiMethod: state.apiMethod,
+      apiUrl: state.apiUrl,
+      hasQuery: state.hasQuery,
+      queries: state.queries,
+      responseTemplate: state.responseTemplate,
+      sampleResponse: state.apiTestResponse
+    }
+  };
+
+  try {
+    const res = await fetch(`${BACKEND}/api/commands`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Save failed');
+    notify('Command saved successfully!', 'success');
+    setTimeout(() => window.location.href = 'dashboard.html', 1200);
+  } catch (e) {
+    notify(e.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save"></i> Save Command';
+  }
+}
+
+// ============ Helpers ============
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function escapeAttr(s) { return escapeHtml(s).replace(/"/g, '&quot;'); }
+function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function copyText(t) { navigator.clipboard.writeText(t); notify('Copied!', 'success'); }
+
+let notifTimer;
+function notify(msg, type = 'info') {
+  const n = document.getElementById('notif');
+  const t = document.getElementById('notifText');
+  const icon = n.querySelector('i');
+  t.textContent = msg;
+  n.className = 'notif show ' + type;
+  icon.className = type === 'success' ? 'fas fa-check-circle' : type === 'error' ? 'fas fa-exclamation-circle' : 'fas fa-info-circle';
+  clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => n.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
