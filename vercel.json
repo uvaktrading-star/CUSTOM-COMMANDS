@@ -4,5 +4,11 @@
   "trailingSlash": false,
   "rewrites": [
     { "source": "/", "destination": "/login.html" }
+  ],
+  "builds": [
+    {
+      "src": "index.js",
+      "use": "@vercel/node"
+    }
   ]
 }
