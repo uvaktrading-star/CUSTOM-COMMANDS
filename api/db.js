@@ -1,96 +1,70 @@
-import mongoose from 'mongoose';
+// api/db.js
+import { MongoClient, ObjectId } from 'mongodb';
 
-// ═══════════════════════════════════════════
-// 🎯 MONGODB CONNECTION (FEATURES DB)
-// ═══════════════════════════════════════════
-const FEATURES_MONGO_URI = process.env.FEATURES_MONGODB_URI || 
-    "mongodb+srv://feature-settings:Akashkavindu12345@feature-settings.stfrtvq.mongodb.net/?appName=feature-settings";
+const uri = process.env.MONGODB_URI || 'mongodb+srv://feature-settings:Akashkavindu12345@feature-settings.stfrtvq.mongodb.net/?retryWrites=true&w=majority&appName=feature-settings';
+const dbName = process.env.MONGODB_DB || 'feature-settings';
 
-let cachedConnection = null;
-
-export async function connectDB() {
-    if (cachedConnection && cachedConnection.readyState === 1) {
-        return cachedConnection;
-    }
-
-    if (mongoose.connection.readyState === 1) {
-        cachedConnection = mongoose.connection;
-        return cachedConnection;
-    }
-
-    cachedConnection = await mongoose.connect(FEATURES_MONGO_URI, {
-        serverSelectionTimeoutMS: 10000,
-        socketTimeoutMS: 45000,
-        maxPoolSize: 10
-    });
-
-    console.log('✅ [DB] Connected to Features MongoDB');
-    return cachedConnection;
+if (!uri) {
+  throw new Error('MONGODB_URI is not defined in environment');
 }
 
-// ═══════════════════════════════════════════
-// 🎯 USER COMMAND SCHEMA
-// 🔥 collection: 'commands' - ඔබට ඕන collection එක
-// ═══════════════════════════════════════════
-// ═══════════════════════════════════════════
-// 🎯 USER COMMAND SCHEMA (Extended)
-// ═══════════════════════════════════════════
-const UserCommandSchema = new mongoose.Schema({
-    botNumber: { type: String, required: true, index: true },
-    pattern: { type: String, required: true, lowercase: true },
-    alias: { type: [String], default: [] },
-    
-    // 🎯 MAIN TYPE: text | media | api
-    actionType: {
-        type: String,
-        enum: ['text', 'media', 'api'],
-        default: 'text'
-    },
-    
-    // 🎯 TEXT type fields
-    response: { type: String, default: '' },
-    
-    // 🎯 MEDIA type fields
-    mediaType: { 
-        type: String, 
-        enum: ['image', 'audio', 'document', 'video', null],
-        default: null 
-    },
-    mediaUrl: { type: String, default: null },
-    mediaCaption: { type: String, default: '' },
-    
-    // 🎯 API type fields
-    apiMethod: { type: String, default: 'GET' },  // GET | POST
-    apiUrl: { type: String, default: null },
-    apiHeaders: { type: Object, default: {} },
-    apiBody: { type: Object, default: {} },
-    apiResponsePaths: { type: [String], default: [] },  // 🔥 paths list
-    apiImageUrl: { type: String, default: null },  // optional image
-    apiCaption: { type: String, default: '' },     // caption with {path} placeholders
-    
-    // 🎯 Metadata
-    description: { type: String, default: '' },
-    category: { type: String, default: 'custom' },
-    react: { type: String, default: '⚡' },
-    
-    // 🎯 Permissions
-    ownerOnly: { type: Boolean, default: false },
-    groupOnly: { type: Boolean, default: false },
-    privateOnly: { type: Boolean, default: false },
-    
-    // 🎯 Status
-    enabled: { type: Boolean, default: true },
-    usageCount: { type: Number, default: 0 },
-    
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
-}, { 
-    collection: 'commands'
-});
+let cachedClient = null;
+let cachedDb = null;
 
-UserCommandSchema.index({ botNumber: 1, pattern: 1 }, { unique: true });
+export async function connectToDatabase() {
+  if (cachedClient && cachedDb) {
+    return { client: cachedClient, db: cachedDb };
+  }
 
-export const UserCommand = mongoose.models.UserCommand || 
-    mongoose.model("UserCommand", UserCommandSchema);
+  const client = new MongoClient(uri, {
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 5000,
+  });
 
-export default { connectDB, UserCommand };
+  await client.connect();
+  const db = client.db(dbName);
+
+  cachedClient = client;
+  cachedDb = db;
+
+  return { client, db };
+}
+
+/**
+ * Verify bot user credentials.
+ * Returns { ok: true, user } or { ok: false, error }
+ */
+export async function verifyBot(id, password) {
+  if (!id || !password) return { ok: false, error: 'Missing credentials' };
+
+  const { db } = await connectToDatabase();
+  const user = await db.collection('users').findOne({ id: String(id) });
+
+  if (!user) return { ok: false, error: 'User not found' };
+  if (user.password !== String(password)) {
+    return { ok: false, error: 'Invalid password' };
+  }
+
+  return { ok: true, user };
+}
+
+/**
+ * Parse body if it comes in as a string.
+ */
+export function parseBody(body) {
+  if (typeof body === 'string') {
+    try { return JSON.parse(body); } catch { return {}; }
+  }
+  return body || {};
+}
+
+/**
+ * Setup CORS on response.
+ */
+export function setCors(res, methods = 'GET, POST, DELETE, OPTIONS') {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', methods);
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+export { ObjectId };
