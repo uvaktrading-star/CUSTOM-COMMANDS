@@ -7,14 +7,12 @@ const MAX_COMMANDS = 5;
    Auth helper — login API එකෙන් එවන token/number එක verify
    ====================================================== */
 function getUserIdFromRequest(req) {
-  // 1) Authorization: Bearer <number> — simplest
   const auth = req.headers.get("authorization") || "";
   if (auth.startsWith("Bearer ")) {
     const id = auth.slice(7).trim();
     if (/^\d{8,15}$/.test(id)) return id;
   }
 
-  // 2) x-user-id header
   const headerId = req.headers.get("x-user-id");
   if (headerId && /^\d{8,15}$/.test(headerId)) return headerId;
 
@@ -62,7 +60,6 @@ function validateCommand(body) {
       errors.push("responseTemplate is required for API commands");
     }
 
-    // 🔥 Image validation
     if (body?.sendWithImage) {
       const hasKey = !!(body?.imageUrlKey && body.imageUrlKey.trim());
       const hasUrl = !!(body?.imageUrl && body.imageUrl.trim());
@@ -117,7 +114,6 @@ function normalizePayload(body, userId) {
     };
     base.responseTemplate = "";
 
-    // 🔥 Reset image fields for simple
     base.sendWithImage = false;
     base.imageUrl = "";
     base.imageUrlKey = "";
@@ -145,7 +141,6 @@ function normalizePayload(body, userId) {
     };
     base.responseTemplate = body.responseTemplate || "";
 
-    // 🔥 NEW: Image fields
     base.sendWithImage = !!body.sendWithImage;
     base.imageUrl = body.imageUrl ? String(body.imageUrl).trim() : "";
     base.imageUrlKey = body.imageUrlKey
@@ -229,20 +224,24 @@ export async function POST(req) {
     const payload = normalizePayload(body, userId);
 
     /* ---------- check if update or create ---------- */
+    // 🔥 case-insensitive search — trim + lowercase already in normalizePayload
     const existing = await Command.findOne({
       _id: userId,
-      command: payload.command,
-    });
+      command: payload.command, // already lowercase
+    }).lean();
 
     if (existing) {
       /* ---------- UPDATE ---------- */
-      Object.assign(existing, payload);
-      await existing.save();
+      const updated = await Command.findOneAndUpdate(
+        { _id: userId, command: payload.command },
+        { $set: payload },
+        { new: true, lean: true }
+      );
 
       return NextResponse.json({
         ok: true,
         action: "updated",
-        command: existing,
+        command: updated,
       });
     }
 
@@ -267,7 +266,7 @@ export async function POST(req) {
           { command: { $in: aliases } },
           { aliase: { $in: aliases } },
         ],
-      });
+      }).lean();
 
       if (aliasConflict) {
         return NextResponse.json(
@@ -291,10 +290,27 @@ export async function POST(req) {
   } catch (err) {
     console.error("add-cmd POST error:", err);
 
-    // duplicate key (race condition)
+    // 🔥 duplicate key error — specific message
     if (err.code === 11000) {
+      const keyPattern = err.keyPattern || {};
+      const keyValue = err.keyValue || {};
+
+      if (keyPattern.command) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: `".${keyValue.command}" කියන command එක දැනටමත් තියෙනවා. වෙන නමක් use කරන්න.`,
+          },
+          { status: 409 }
+        );
+      }
+
+      const dupField = Object.keys(keyPattern).join(", ");
       return NextResponse.json(
-        { ok: false, error: "Command already exists" },
+        {
+          ok: false,
+          error: `Duplicate value detected: ${dupField} = ${JSON.stringify(keyValue)}`,
+        },
         { status: 409 }
       );
     }
@@ -308,7 +324,6 @@ export async function POST(req) {
 
 /* ======================================================
    DELETE — delete one command
-   query: /api/add-cmd?command=hello
    ====================================================== */
 export async function DELETE(req) {
   try {
