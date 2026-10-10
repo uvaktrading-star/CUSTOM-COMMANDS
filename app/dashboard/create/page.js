@@ -180,6 +180,109 @@ export default function CreateCommand() {
     navigator.clipboard.writeText(token).catch(() => {});
   }
 
+  /* ==================== TEMPLATE RENDER ==================== */
+  function renderTemplate(template, testData) {
+    if (!template) return "";
+    if (!testData) return template;
+
+    const lookup = (obj, path) => {
+      if (!obj) return undefined;
+      const parts = path.split(".");
+      let cur = obj;
+      for (const p of parts) {
+        if (cur == null) return undefined;
+        if (Array.isArray(cur) && /^\d+$/.test(p)) {
+          cur = cur[parseInt(p, 10)];
+        } else {
+          cur = cur[p];
+        }
+      }
+      return cur;
+    };
+
+    return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (match, key) => {
+      const trimmed = key.trim();
+      const value = lookup(testData, trimmed);
+      if (value === undefined || value === null) return match;
+      if (typeof value === "object") return JSON.stringify(value);
+      return String(value);
+    });
+  }
+
+  /* ==================== TEMPLATE VALIDATE ==================== */
+  function validateTemplate(template, availableKeys = []) {
+    const errors = [];
+    const warnings = [];
+    if (!template) return { errors, warnings };
+
+    const openCount = (template.match(/\{\{/g) || []).length;
+    const closeCount = (template.match(/\}\}/g) || []).length;
+    if (openCount !== closeCount) {
+      errors.push({
+        msg: `Unclosed braces — ${openCount} "{{" and ${closeCount} "}}"`,
+        fix: 'හැම "{{" එකකටම "}}" එකක් තියෙන්න ඕන',
+      });
+    }
+
+    const regex = /\{\{\s*([^}]+?)\s*\}\}/g;
+    let m;
+    while ((m = regex.exec(template)) !== null) {
+      const key = m[1].trim();
+      if (/[{}]/.test(key)) {
+        errors.push({
+          msg: `Invalid token: {{${key}}}`,
+          fix: "Nested braces allowed නෑ",
+        });
+        continue;
+      }
+      if (availableKeys.length > 0 && !availableKeys.includes(key)) {
+        const base = key.split(".")[0];
+        const hasBase = availableKeys.some(
+          (k) => k === key || k.split(".")[0] === base
+        );
+        if (!hasBase) {
+          warnings.push({
+            msg: `Unknown field: {{${key}}}`,
+            fix: "API test එකේ නොපෙනුණු field එකක්",
+          });
+        }
+      }
+    }
+
+    const strayOpen = template.replace(/\{\{/g, "").match(/\{/g);
+    const strayClose = template.replace(/\}\}/g, "").match(/\}/g);
+    if (strayOpen) {
+      errors.push({
+        msg: 'Stray "{" found — should be "{{"',
+        fix: 'හැම variable එකක්ම "{{key}}" format එකට',
+      });
+    }
+    if (strayClose) {
+      errors.push({
+        msg: 'Stray "}" found — should be "}}"',
+        fix: 'හැම variable එකක්ම "{{key}}" format එකට',
+      });
+    }
+
+    return { errors, warnings };
+  }
+
+  /* ==================== COMPUTED ==================== */
+  const templateValidation = validateTemplate(
+    cmd.responseTemplate,
+    cmd.apiConfig.extractedValues || []
+  );
+
+  const renderedPreview =
+    cmd.type === "API"
+      ? renderTemplate(
+          cmd.responseTemplate,
+          apiResult?.ok ? apiResult.data : null
+        )
+      : "";
+
+  const hasApiTest = !!(apiResult && apiResult.ok);
+
   if (loadingExisting) {
     return (
       <div className="wiz-loading">
@@ -210,9 +313,7 @@ export default function CreateCommand() {
         @keyframes wizSpin { to { transform: rotate(360deg); } }
 
         /* ==================== HEADER ==================== */
-        .wiz-header {
-          margin-bottom: 28px;
-        }
+        .wiz-header { margin-bottom: 28px; }
         .wiz-title {
           font-size: 1.9rem;
           font-weight: 900;
@@ -264,14 +365,12 @@ export default function CreateCommand() {
           scrollbar-width: none;
         }
         .steps-wrap::-webkit-scrollbar { display: none; }
-
         .step-item {
           display: flex;
           align-items: center;
           gap: 10px;
           flex-shrink: 0;
         }
-
         .step-pill {
           display: flex;
           align-items: center;
@@ -300,7 +399,6 @@ export default function CreateCommand() {
           border-color: rgba(34, 197, 94, 0.4);
           background: rgba(34, 197, 94, 0.1);
         }
-
         .step-num {
           width: 24px;
           height: 24px;
@@ -320,7 +418,6 @@ export default function CreateCommand() {
           background: #22c55e;
           color: #000;
         }
-
         .step-connector {
           width: 30px;
           height: 2px;
@@ -331,7 +428,6 @@ export default function CreateCommand() {
         .step-connector.done {
           background: linear-gradient(90deg, #22c55e, #4ade80);
         }
-
         @media (max-width: 640px) {
           .step-pill { padding: 9px 14px; font-size: 0.75rem; }
           .step-pill .step-label { display: none; }
@@ -359,11 +455,7 @@ export default function CreateCommand() {
           background: radial-gradient(circle, rgba(59, 130, 246, 0.08), transparent 70%);
           pointer-events: none;
         }
-        .wiz-panel > * {
-          position: relative;
-          z-index: 1;
-        }
-
+        .wiz-panel > * { position: relative; z-index: 1; }
         @media (max-width: 640px) {
           .wiz-panel { padding: 22px 16px; border-radius: 20px; }
         }
@@ -378,7 +470,6 @@ export default function CreateCommand() {
         @media (max-width: 600px) {
           .field-row { grid-template-columns: 1fr; }
         }
-
         .field label {
           display: flex;
           align-items: center;
@@ -390,14 +481,8 @@ export default function CreateCommand() {
           letter-spacing: 0.8px;
           text-transform: uppercase;
         }
-        .field label i {
-          color: #3b82f6;
-          font-size: 0.7rem;
-        }
-        .field label .req {
-          color: #f87171;
-          margin-left: 2px;
-        }
+        .field label i { color: #3b82f6; font-size: 0.7rem; }
+        .field label .req { color: #f87171; margin-left: 2px; }
         .field .hint {
           display: flex;
           align-items: center;
@@ -406,10 +491,7 @@ export default function CreateCommand() {
           color: rgba(255, 255, 255, 0.35);
           margin-top: 8px;
         }
-        .field .hint i {
-          color: #3b82f6;
-          font-size: 0.65rem;
-        }
+        .field .hint i { color: #3b82f6; font-size: 0.65rem; }
 
         .input,
         .textarea,
@@ -436,10 +518,7 @@ export default function CreateCommand() {
         .textarea::placeholder {
           color: rgba(255, 255, 255, 0.2);
         }
-
-        .input-icon-wrap {
-          position: relative;
-        }
+        .input-icon-wrap { position: relative; }
         .input-icon-wrap > i {
           position: absolute;
           left: 16px;
@@ -449,9 +528,7 @@ export default function CreateCommand() {
           font-size: 0.85rem;
           pointer-events: none;
         }
-        .input-icon-wrap .input {
-          padding-left: 44px;
-        }
+        .input-icon-wrap .input { padding-left: 44px; }
 
         .textarea {
           resize: vertical;
@@ -478,7 +555,6 @@ export default function CreateCommand() {
         @media (max-width: 500px) {
           .type-grid { grid-template-columns: 1fr; }
         }
-
         .type-card {
           padding: 22px 18px;
           border-radius: 18px;
@@ -506,18 +582,13 @@ export default function CreateCommand() {
           border-color: rgba(59, 130, 246, 0.4);
           transform: translateY(-2px);
         }
-        .type-card:hover::before {
-          opacity: 1;
-        }
+        .type-card:hover::before { opacity: 1; }
         .type-card.active {
           border-color: #3b82f6;
           background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(6, 182, 212, 0.08));
           box-shadow: 0 0 40px rgba(59, 130, 246, 0.2);
         }
-        .type-card.active::before {
-          opacity: 1;
-        }
-
+        .type-card.active::before { opacity: 1; }
         .type-icon {
           width: 52px;
           height: 52px;
@@ -541,7 +612,6 @@ export default function CreateCommand() {
           color: #22d3ee;
           border: 1px solid rgba(6, 182, 212, 0.3);
         }
-
         .type-name {
           font-size: 0.98rem;
           font-weight: 800;
@@ -569,9 +639,7 @@ export default function CreateCommand() {
           font-size: 0.85rem;
           transition: all 0.2s ease;
         }
-        .checkbox-row:hover {
-          border-color: rgba(59, 130, 246, 0.3);
-        }
+        .checkbox-row:hover { border-color: rgba(59, 130, 246, 0.3); }
         .checkbox-row input[type="checkbox"] {
           accent-color: #3b82f6;
           width: 18px;
@@ -586,11 +654,6 @@ export default function CreateCommand() {
           font-weight: 500;
           font-size: 0.85rem;
         }
-        .checkbox-row .toggle-hint {
-          font-size: 0.7rem;
-          color: rgba(255, 255, 255, 0.35);
-          margin-left: auto;
-        }
 
         /* ==================== QUERY SECTION ==================== */
         .query-section {
@@ -600,7 +663,6 @@ export default function CreateCommand() {
           border-radius: 14px;
           margin-bottom: 16px;
         }
-
         .query-row {
           display: grid;
           grid-template-columns: 1fr 1fr auto;
@@ -617,7 +679,6 @@ export default function CreateCommand() {
             border: 1px solid rgba(255, 255, 255, 0.05);
           }
         }
-
         .query-remove {
           width: 44px;
           border-radius: 12px;
@@ -630,16 +691,10 @@ export default function CreateCommand() {
           display: grid;
           place-items: center;
         }
-        .query-remove:hover {
-          background: rgba(239, 68, 68, 0.2);
-        }
+        .query-remove:hover { background: rgba(239, 68, 68, 0.2); }
         @media (max-width: 500px) {
-          .query-remove {
-            width: 100%;
-            height: 38px;
-          }
+          .query-remove { width: 100%; height: 38px; }
         }
-
         .add-query {
           display: inline-flex;
           align-items: center;
@@ -694,21 +749,13 @@ export default function CreateCommand() {
           transition: opacity 0.3s ease;
           z-index: 0;
         }
-        .test-btn:hover::before {
-          opacity: 1;
-        }
-        .test-btn > * {
-          position: relative;
-          z-index: 1;
-        }
+        .test-btn:hover::before { opacity: 1; }
+        .test-btn > * { position: relative; z-index: 1; }
         .test-btn:hover:not(:disabled) {
           transform: translateY(-3px) scale(1.02);
           box-shadow: 0 12px 40px rgba(6, 182, 212, 0.5);
         }
-        .test-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
+        .test-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* ==================== TEST RESULT ==================== */
         .test-result {
@@ -731,7 +778,6 @@ export default function CreateCommand() {
           border-color: rgba(239, 68, 68, 0.35);
           background: linear-gradient(135deg, rgba(239, 68, 68, 0.06), rgba(0, 0, 0, 0.3));
         }
-
         .result-head {
           display: flex;
           justify-content: space-between;
@@ -753,13 +799,8 @@ export default function CreateCommand() {
           margin-right: 8px;
           font-size: 0.75rem;
         }
-        .result-head.success .status-icon {
-          background: rgba(34, 197, 94, 0.15);
-        }
-        .result-head.error .status-icon {
-          background: rgba(239, 68, 68, 0.15);
-        }
-
+        .result-head.success .status-icon { background: rgba(34, 197, 94, 0.15); }
+        .result-head.error .status-icon { background: rgba(239, 68, 68, 0.15); }
         .result-badge {
           padding: 5px 12px;
           border-radius: 20px;
@@ -771,7 +812,6 @@ export default function CreateCommand() {
           align-items: center;
           gap: 5px;
         }
-
         .array-badge {
           display: inline-flex;
           align-items: center;
@@ -785,7 +825,6 @@ export default function CreateCommand() {
           font-weight: 600;
           margin: 4px 6px 0 0;
         }
-
         .keys-label {
           display: flex;
           align-items: center;
@@ -797,7 +836,6 @@ export default function CreateCommand() {
           font-weight: 700;
           margin: 18px 0 10px;
         }
-
         .keys-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -812,7 +850,6 @@ export default function CreateCommand() {
           background: rgba(59, 130, 246, 0.3);
           border-radius: 3px;
         }
-
         .key-item {
           display: flex;
           flex-direction: column;
@@ -879,7 +916,6 @@ export default function CreateCommand() {
           pointer-events: none;
           border-radius: 18px;
         }
-
         .chat-bubble {
           max-width: 82%;
           padding: 11px 15px;
@@ -940,7 +976,6 @@ export default function CreateCommand() {
           padding-top: 24px;
           border-top: 1px solid rgba(255, 255, 255, 0.06);
         }
-
         .nav-btn {
           display: inline-flex;
           align-items: center;
@@ -963,11 +998,7 @@ export default function CreateCommand() {
           color: #fff;
           transform: translateY(-2px);
         }
-        .nav-btn:disabled {
-          opacity: 0.35;
-          cursor: not-allowed;
-        }
-
+        .nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
         .nav-btn.primary {
           background: linear-gradient(135deg, #3b82f6, #06b6d4);
           border-color: transparent;
@@ -978,10 +1009,7 @@ export default function CreateCommand() {
           transform: translateY(-3px) scale(1.02);
           box-shadow: 0 12px 40px rgba(59, 130, 246, 0.5);
         }
-        .nav-btn.primary:disabled {
-          opacity: 0.4;
-        }
-
+        .nav-btn.primary:disabled { opacity: 0.4; }
         @media (max-width: 500px) {
           .wiz-nav { flex-direction: column-reverse; }
           .nav-btn { justify-content: center; width: 100%; }
@@ -1033,6 +1061,96 @@ export default function CreateCommand() {
           color: #22d3ee;
           font-family: "SF Mono", "Consolas", monospace;
           font-size: 0.75rem;
+        }
+
+        /* ==================== SYNTAX FEEDBACK ==================== */
+        .textarea.has-error {
+          border-color: rgba(239, 68, 68, 0.5) !important;
+          box-shadow: 0 0 25px rgba(239, 68, 68, 0.15) !important;
+        }
+        .syntax-errors,
+        .syntax-warnings,
+        .syntax-success {
+          margin-top: 10px;
+          padding: 12px 14px;
+          border-radius: 10px;
+          font-size: 0.78rem;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          animation: slideDown 0.25s ease;
+        }
+        .syntax-errors {
+          background: rgba(239, 68, 68, 0.08);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .syntax-warnings {
+          background: rgba(234, 179, 8, 0.08);
+          border: 1px solid rgba(234, 179, 8, 0.3);
+        }
+        .syntax-success {
+          flex-direction: row;
+          align-items: center;
+          gap: 8px;
+          background: rgba(34, 197, 94, 0.08);
+          border: 1px solid rgba(34, 197, 94, 0.3);
+          color: #4ade80;
+          font-weight: 600;
+        }
+        .syntax-success i { color: #4ade80; }
+        .syntax-error-item,
+        .syntax-warning-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          line-height: 1.4;
+        }
+        .syntax-error-item i {
+          color: #f87171;
+          font-size: 0.9rem;
+          margin-top: 2px;
+          flex-shrink: 0;
+        }
+        .syntax-warning-item i {
+          color: #facc15;
+          font-size: 0.9rem;
+          margin-top: 2px;
+          flex-shrink: 0;
+        }
+        .syntax-msg {
+          color: rgba(255, 255, 255, 0.9);
+          font-weight: 600;
+          font-family: "SF Mono", "Consolas", monospace;
+          font-size: 0.75rem;
+        }
+        .syntax-fix {
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 0.7rem;
+          margin-top: 2px;
+          font-weight: 400;
+        }
+
+        /* ==================== PREVIEW BADGE ==================== */
+        .preview-badge {
+          align-self: center;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 12px;
+          border-radius: 20px;
+          font-size: 0.65rem;
+          font-weight: 700;
+          margin-top: 4px;
+        }
+        .preview-badge.live {
+          background: rgba(34, 197, 94, 0.15);
+          color: #4ade80;
+          border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        .preview-badge.pending {
+          background: rgba(255, 255, 255, 0.05);
+          color: rgba(255, 255, 255, 0.4);
+          border: 1px solid rgba(255, 255, 255, 0.08);
         }
       `}</style>
 
@@ -1575,9 +1693,29 @@ export default function CreateCommand() {
                       : `[${cmd.textConfig.contentType}] ${
                           cmd.textConfig.contentValue || "(no url)"
                         }`
-                    : cmd.responseTemplate ||
+                    : renderedPreview ||
+                      cmd.responseTemplate ||
                       "🎬 *{{results.title}}*\n⭐ {{results.rating}} | {{results.year}}\n🔗 {{results.link}}"}
                 </div>
+
+                {cmd.type === "API" && (
+                  <div
+                    className={`preview-badge ${
+                      hasApiTest ? "live" : "pending"
+                    }`}
+                  >
+                    <i
+                      className={`fas ${
+                        hasApiTest ? "fa-circle-check" : "fa-circle-info"
+                      }`}
+                      style={{ fontSize: "0.55rem" }}
+                    />
+                    {hasApiTest
+                      ? "Preview with real API data"
+                      : "Test API in step 2 for live preview"}
+                  </div>
+                )}
+
                 <div className="chat-time">
                   <i className="fas fa-check-double" style={{ marginRight: 4 }} />
                   just now
@@ -1593,7 +1731,9 @@ export default function CreateCommand() {
                     Response Template <span className="req">*</span>
                   </label>
                   <textarea
-                    className="textarea"
+                    className={`textarea ${
+                      templateValidation.errors.length > 0 ? "has-error" : ""
+                    }`}
                     placeholder={`🎬 *{{results.title}}*\n⭐ {{results.rating}} | {{results.year}}\n🔗 {{results.link}}`}
                     value={cmd.responseTemplate}
                     onChange={(e) =>
@@ -1601,6 +1741,52 @@ export default function CreateCommand() {
                     }
                     rows={6}
                   />
+
+                  {/* Syntax errors */}
+                  {templateValidation.errors.length > 0 && (
+                    <div className="syntax-errors">
+                      {templateValidation.errors.map((e, i) => (
+                        <div key={i} className="syntax-error-item">
+                          <i className="fas fa-circle-xmark" />
+                          <div>
+                            <div className="syntax-msg">{e.msg}</div>
+                            {e.fix && (
+                              <div className="syntax-fix">{e.fix}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Warnings */}
+                  {templateValidation.errors.length === 0 &&
+                    templateValidation.warnings.length > 0 && (
+                      <div className="syntax-warnings">
+                        {templateValidation.warnings.slice(0, 3).map((w, i) => (
+                          <div key={i} className="syntax-warning-item">
+                            <i className="fas fa-triangle-exclamation" />
+                            <div>
+                              <div className="syntax-msg">{w.msg}</div>
+                              {w.fix && (
+                                <div className="syntax-fix">{w.fix}</div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                  {/* Success */}
+                  {templateValidation.errors.length === 0 &&
+                    templateValidation.warnings.length === 0 &&
+                    cmd.responseTemplate && (
+                      <div className="syntax-success">
+                        <i className="fas fa-circle-check" />
+                        Template syntax හරි
+                      </div>
+                    )}
+
                   <div className="hint">
                     <i className="fas fa-info-circle" />
                     Use <code>{"{{key}}"}</code> — click කරන්න පහත fields වලින්
