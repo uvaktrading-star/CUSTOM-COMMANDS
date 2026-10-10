@@ -38,7 +38,23 @@ function flatten(obj, prefix = "", out = []) {
 }
 
 /* ======================================================
-   2. TEMPLATE KEYS — dedupe array indexes
+   2. TEMPLATE KEYS — dedupe array indexes + expand info
+   
+   Returns:
+   [
+     { key: "status", sample: true, type: "boolean", isArray: false },
+     { key: "count", sample: 10, type: "number", isArray: false },
+     {
+       key: "results.title",
+       sample: "Spider-Man...",
+       type: "string",
+       isArray: true,
+       arrayPath: "results",
+       count: 10,
+       expandedKeys: ["results.0.title", ..., "results.9.title"]
+     },
+     ...
+   ]
    ====================================================== */
 function toTemplateKeys(values) {
   const map = new Map();
@@ -47,13 +63,30 @@ function toTemplateKeys(values) {
     if (!["string", "number", "boolean"].includes(v.type)) continue;
 
     const templateKey = v.key.replace(/\.\d+(?=\.|$)/g, "");
+    const hasIndex = /\.\d+(?=\.|$)/.test(v.key);
 
     if (!map.has(templateKey)) {
+      let arrayPath = null;
+      if (hasIndex) {
+        const arrayMatch = v.key.match(/^(.+?)\.\d+(?=\.|$)/);
+        arrayPath = arrayMatch ? arrayMatch[1] : null;
+      }
+
       map.set(templateKey, {
         key: templateKey,
         sample: v.value,
         type: v.type,
+        isArray: hasIndex,
+        arrayPath: arrayPath || "",
+        count: hasIndex ? 1 : 0,
+        expandedKeys: hasIndex ? [v.key] : [],
       });
+    } else {
+      const entry = map.get(templateKey);
+      if (hasIndex) {
+        entry.count = (entry.count || 0) + 1;
+        entry.expandedKeys.push(v.key);
+      }
     }
   }
 
@@ -91,7 +124,7 @@ function summarizeArrays(data) {
 }
 
 /* ======================================================
-   4. NORMALIZE QUERY — accepts defaultValue | value | default
+   4. NORMALIZE QUERY
    ====================================================== */
 function normalizeQueries(queries = []) {
   if (!Array.isArray(queries)) return [];
@@ -100,7 +133,6 @@ function normalizeQueries(queries = []) {
     .map((q) => {
       if (!q) return null;
 
-      // support multiple field names
       const key = q.key ?? q.name ?? q.param ?? "";
       const value =
         q.defaultValue ??
@@ -169,8 +201,6 @@ export async function POST(req) {
     }
 
     const { method = "GET", url } = body || {};
-
-    // ✅ normalize queries — supports defaultValue / value / default
     const queries = normalizeQueries(body?.queries);
 
     if (!url) {
@@ -271,7 +301,20 @@ export async function POST(req) {
 
     const templateKeys = toTemplateKeys(values);
     const arrays = isJSON ? summarizeArrays(data) : [];
+
+    // 🔥 extractedValues — base keys විතරයි (DB එකට save කරන්න)
     const extractedValues = templateKeys.map((t) => t.key);
+
+    // 🔥 templateGroups — frontend එකට ready-made groups (expand info සමඟ)
+    const templateGroups = templateKeys.map((t) => ({
+      key: t.key,
+      sample: t.sample,
+      type: t.type,
+      isArray: !!t.isArray,
+      arrayPath: t.arrayPath || "",
+      count: t.count || 0,
+      expandedKeys: t.expandedKeys || [],
+    }));
 
     return NextResponse.json({
       ok: true,
@@ -280,7 +323,6 @@ export async function POST(req) {
       contentType,
       isJSON,
 
-      // ✅ helpful for debugging
       requestInfo: {
         method: upperMethod,
         finalUrl,
@@ -291,6 +333,7 @@ export async function POST(req) {
       values,
       usableValues,
       templateKeys,
+      templateGroups, // 🔥 NEW
       arrays,
       extractedValues,
     });
