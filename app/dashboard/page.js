@@ -37,7 +37,6 @@ export default function DashboardHome() {
     }
   }
 
-  /* ---------- toggle active state ---------- */
   async function toggleActive(cmd) {
     setToggling(cmd.command);
     try {
@@ -77,7 +76,6 @@ export default function DashboardHome() {
     }
   }
 
-  /* ---------- delete command ---------- */
   async function deleteCommand(commandName) {
     setDeleting(commandName);
     try {
@@ -92,7 +90,6 @@ export default function DashboardHome() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Failed to delete");
 
-      // Remove from UI
       setCommands((prev) => prev.filter((c) => c.command !== commandName));
       setConfirmDelete(null);
     } catch (err) {
@@ -102,7 +99,6 @@ export default function DashboardHome() {
     }
   }
 
-  /* ---------- filters ---------- */
   const filtered = commands.filter((c) => {
     if (search) {
       const q = search.toLowerCase();
@@ -247,6 +243,11 @@ export default function DashboardHome() {
         .create-btn:active {
           transform: translateY(-1px) scale(1.01);
         }
+        .create-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none !important;
+        }
 
         .btn-icon {
           width: 26px;
@@ -388,7 +389,6 @@ export default function DashboardHome() {
           font-size: 0.6rem;
         }
 
-        /* Progress bar for total */
         .stat-progress {
           margin-top: 10px;
           height: 4px;
@@ -570,7 +570,6 @@ export default function DashboardHome() {
           opacity: 1;
         }
 
-        /* Card top strip */
         .cmd-card::after {
           content: "";
           position: absolute;
@@ -687,7 +686,6 @@ export default function DashboardHome() {
           border: 1px solid rgba(34, 197, 94, 0.25);
         }
 
-        /* ==================== TOGGLE SWITCH ==================== */
         .toggle-wrap {
           display: flex;
           align-items: center;
@@ -859,11 +857,6 @@ export default function DashboardHome() {
           background: linear-gradient(135deg, #ef4444, #dc2626);
           color: #fff;
           border-color: transparent;
-          animation: pulseDelete 1.5s infinite;
-        }
-        @keyframes pulseDelete {
-          0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
-          50% { box-shadow: 0 0 35px rgba(239, 68, 68, 0.7); }
         }
 
         /* ==================== LOADING ==================== */
@@ -1128,7 +1121,6 @@ export default function DashboardHome() {
                     </div>
                   </div>
 
-                  {/* Toggle switch */}
                   <div className="toggle-wrap">
                     <div
                       className={`toggle ${cmd.isActive ? "on" : ""} ${
@@ -1176,7 +1168,11 @@ export default function DashboardHome() {
                     <>
                       <button
                         className="delete-btn confirming"
-                        onClick={() => deleteCommand(cmd.command)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          deleteCommand(cmd.command);
+                        }}
                         disabled={isDeleting}
                       >
                         {isDeleting ? (
@@ -1193,7 +1189,11 @@ export default function DashboardHome() {
                       </button>
                       <button
                         className="delete-btn"
-                        onClick={() => setConfirmDelete(null)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setConfirmDelete(null);
+                        }}
                         disabled={isDeleting}
                         style={{
                           maxWidth: 60,
@@ -1209,7 +1209,11 @@ export default function DashboardHome() {
                   ) : (
                     <button
                       className="delete-btn"
-                      onClick={() => setConfirmDelete(cmd.command)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setConfirmDelete(cmd.command);
+                      }}
                       title={`Delete .${cmd.command}`}
                     >
                       <i className="fas fa-trash" />
