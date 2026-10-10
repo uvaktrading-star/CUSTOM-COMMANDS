@@ -53,11 +53,9 @@ export default function CreateCommand() {
   const [loadingExisting, setLoadingExisting] = useState(!!editName);
   const [existingCommands, setExistingCommands] = useState([]);
 
-  // 🔥 expanded state
   const [expandedKeys, setExpandedKeys] = useState({});
   const [expandedImageKeys, setExpandedImageKeys] = useState({});
 
-  // 🔥 template textarea ref
   const templateRef = useRef(null);
 
   useEffect(() => {
@@ -404,8 +402,6 @@ export default function CreateCommand() {
     /image|img|photo|poster|thumbnail|picture|cover|icon|banner|thumb/i.test(k)
   );
 
-  /* ==================== GROUP KEYS (fallback) ==================== */
-  // Backend එකෙන් templateGroups එව්වේ නැත්නම්, client-side compute කරන්න
   function groupTemplateKeys(keys) {
     const groups = [];
     const seen = new Set();
@@ -449,7 +445,6 @@ export default function CreateCommand() {
     return groups;
   }
 
-  // 🔥 Backend එකෙන් templateGroups එව්වේ නම් ඒක use කරන්න, නැත්නම් compute
   const templateGroups = (() => {
     if (apiResult?.templateGroups?.length) {
       return apiResult.templateGroups;
@@ -522,6 +517,24 @@ export default function CreateCommand() {
     out = out.replace(/`([^`\n]+?)`/g, "<code>$1</code>");
 
     return out;
+  }
+
+  /* ==================== SAMPLE LOOKUP HELPER ==================== */
+  function lookupSampleValue(path) {
+    if (!apiResult?.ok) return "";
+    const parts = String(path).split(".");
+    let cur = apiResult.data;
+    for (const p of parts) {
+      if (cur == null) return "";
+      if (Array.isArray(cur) && /^\d+$/.test(p)) {
+        cur = cur[parseInt(p, 10)];
+      } else {
+        cur = cur[p];
+      }
+    }
+    if (cur === undefined || cur === null || typeof cur === "object")
+      return "";
+    return String(cur);
   }
 
   if (loadingExisting) {
@@ -760,6 +773,7 @@ export default function CreateCommand() {
           line-height: 1.55;
           font-family: "SF Mono", "Consolas", monospace;
           font-size: 0.85rem;
+          white-space: pre-wrap;
         }
         .select {
           cursor: pointer;
@@ -1237,6 +1251,10 @@ export default function CreateCommand() {
           border-color: rgba(6, 182, 212, 0.3);
           transform: translateX(2px);
         }
+        .field-child.selected {
+          background: rgba(34, 197, 94, 0.08);
+          border-color: rgba(34, 197, 94, 0.5);
+        }
         .field-child .field-child-name {
           color: #22d3ee;
           font-family: "SF Mono", "Consolas", monospace;
@@ -1254,6 +1272,9 @@ export default function CreateCommand() {
           color: rgba(255, 255, 255, 0.3);
           font-size: 0.6rem;
           flex-shrink: 0;
+        }
+        .field-child.selected .field-child-name i {
+          color: #4ade80;
         }
         .field-child .field-child-sample {
           color: rgba(255, 255, 255, 0.45);
@@ -1344,13 +1365,13 @@ export default function CreateCommand() {
           position: relative;
           z-index: 1;
           box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+          white-space: pre-wrap;
         }
         .chat-bubble.user {
           align-self: flex-end;
           background: linear-gradient(135deg, #005c4b, #006654);
           color: #e8ffe8;
           border-bottom-right-radius: 4px;
-          white-space: pre-wrap;
         }
         .chat-bubble.user::after {
           content: "";
@@ -1379,6 +1400,7 @@ export default function CreateCommand() {
           border-top: 8px solid transparent;
         }
 
+        /* 🔥 WhatsApp text formatting — preserves spaces & line breaks */
         .chat-bubble.bot .line-mono {
           display: block;
           background: rgba(0, 0, 0, 0.4);
@@ -1389,7 +1411,7 @@ export default function CreateCommand() {
           color: #a5f3fc;
           margin: 3px 0;
           white-space: pre-wrap;
-          word-break: break-all;
+          word-break: break-word;
         }
         .chat-bubble.bot .line-quote {
           display: block;
@@ -1398,6 +1420,7 @@ export default function CreateCommand() {
           color: rgba(255, 255, 255, 0.7);
           font-style: italic;
           margin: 3px 0;
+          white-space: pre-wrap;
         }
         .chat-bubble.bot code {
           background: rgba(0, 0, 0, 0.35);
@@ -1410,7 +1433,7 @@ export default function CreateCommand() {
         .chat-bubble.bot b { font-weight: 900; color: #fff; }
         .chat-bubble.bot i { font-style: italic; }
         .chat-bubble.bot s { text-decoration: line-through; opacity: 0.7; }
-        .chat-bubble.bot .line-empty { display: block; height: 6px; }
+        .chat-bubble.bot .line-empty { display: block; height: 8px; }
 
         .chat-image-wrap {
           border-radius: 14px;
@@ -1442,6 +1465,26 @@ export default function CreateCommand() {
           color: #a5f3fc;
         }
         .chat-image-caption b { font-weight: 900; color: #fff; }
+        .chat-image-caption .line-empty { display: block; height: 8px; }
+        .chat-image-caption .line-mono {
+          display: block;
+          background: rgba(0, 0, 0, 0.4);
+          padding: 6px 10px;
+          border-radius: 8px;
+          font-family: "SF Mono", "Consolas", monospace;
+          font-size: 0.78rem;
+          color: #a5f3fc;
+          margin: 3px 0;
+          white-space: pre-wrap;
+        }
+        .chat-image-caption .line-quote {
+          display: block;
+          border-left: 3px solid #22d3ee;
+          padding-left: 10px;
+          color: rgba(255, 255, 255, 0.7);
+          font-style: italic;
+          margin: 3px 0;
+        }
 
         .chat-time {
           font-size: 0.62rem;
@@ -1838,6 +1881,12 @@ export default function CreateCommand() {
           transform: translateY(-1px);
           box-shadow: 0 8px 20px rgba(34, 197, 94, 0.4);
         }
+
+        /* 🔥 WhatsApp-like text render helper */
+        .wa-text {
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
       `}</style>
 
       {/* ==================== HEADER ==================== */}
@@ -1895,7 +1944,7 @@ export default function CreateCommand() {
           </div>
         )}
 
-        {/* ==================== STEP 1: DETAILS ==================== */}
+        {/* ==================== STEP 1 ==================== */}
         {step === 1 && (
           <>
             <div className="field">
@@ -2023,7 +2072,7 @@ export default function CreateCommand() {
           </>
         )}
 
-        {/* ==================== STEP 2A: SIMPLE RESPONSE ==================== */}
+        {/* ==================== STEP 2A ==================== */}
         {step === 2 && cmd.type === "simple" && (
           <>
             <div className="field">
@@ -2171,7 +2220,7 @@ export default function CreateCommand() {
           </>
         )}
 
-        {/* ==================== STEP 2B: API RESPONSE ==================== */}
+        {/* ==================== STEP 2B ==================== */}
         {step === 2 && cmd.type === "API" && (
           <>
             <div className="info-card">
@@ -2404,7 +2453,7 @@ export default function CreateCommand() {
           </>
         )}
 
-        {/* ==================== STEP 3: TEST ==================== */}
+        {/* ==================== STEP 3 ==================== */}
         {step === 3 && (
           <>
             <div className="field">
@@ -2547,7 +2596,7 @@ export default function CreateCommand() {
                       </div>
                     </div>
                   ) : (
-                    <div className="chat-bubble bot">
+                    <div className="chat-bubble bot wa-text">
                       {renderWhatsAppPreview(
                         cmd.textConfig.contentValue || "(empty message)"
                       ).map((el) => {
@@ -2635,7 +2684,7 @@ export default function CreateCommand() {
                         </div>
                       </div>
                     ) : (
-                      <div className="chat-bubble bot">
+                      <div className="chat-bubble bot wa-text">
                         {renderedPreview ? (
                           renderWhatsAppPreview(renderedPreview).map((el) => {
                             if (el.type === "empty")
@@ -2860,30 +2909,8 @@ export default function CreateCommand() {
                             {isArray && isExpanded && (
                               <div className="field-group-children">
                                 {children.map((child, ci) => {
-                                  // sample value lookup
-                                  let sampleVal = "";
-                                  if (apiResult?.ok) {
-                                    const parts = String(child).split(".");
-                                    let cur = apiResult.data;
-                                    for (const p of parts) {
-                                      if (cur == null) break;
-                                      if (
-                                        Array.isArray(cur) &&
-                                        /^\d+$/.test(p)
-                                      ) {
-                                        cur = cur[parseInt(p, 10)];
-                                      } else {
-                                        cur = cur[p];
-                                      }
-                                    }
-                                    if (
-                                      cur !== undefined &&
-                                      cur !== null &&
-                                      typeof cur !== "object"
-                                    ) {
-                                      sampleVal = String(cur);
-                                    }
-                                  }
+                                  const sampleVal =
+                                    lookupSampleValue(child);
 
                                   return (
                                     <div
@@ -3017,7 +3044,7 @@ export default function CreateCommand() {
                             select
                           </label>
 
-                          {/* 🔥 image chip dropdowns */}
+                          {/* 🔥 image chip dropdowns — same style as fields */}
                           {imageGroups.length > 0 && (
                             <div className="fields-wrap">
                               {imageGroups.map((g, gi) => {
@@ -3044,10 +3071,6 @@ export default function CreateCommand() {
                                     key={gi}
                                     className={`field-group ${
                                       isExpanded ? "expanded" : ""
-                                    } ${
-                                      isSelected && !isArray
-                                        ? "expanded"
-                                        : ""
                                     }`}
                                   >
                                     <div
@@ -3057,7 +3080,6 @@ export default function CreateCommand() {
                                           upd({ imageUrlKey: groupKey });
                                           return;
                                         }
-                                        upd({ imageUrlKey: groupKey });
                                         setExpandedImageKeys((prev) => ({
                                           ...prev,
                                           [groupKey]: !prev[groupKey],
@@ -3077,7 +3099,7 @@ export default function CreateCommand() {
                                       </div>
                                       <div className="field-group-info">
                                         <div className="field-group-name">
-                                          {groupKey}
+                                          {`{{${groupKey}}}`}
                                           {isArray && (
                                             <span className="count">
                                               {count}
@@ -3096,6 +3118,27 @@ export default function CreateCommand() {
                                           </div>
                                         )}
                                       </div>
+                                      {!isArray && (
+                                        <button
+                                          type="button"
+                                          className="field-group-insert"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            upd({ imageUrlKey: groupKey });
+                                          }}
+                                        >
+                                          <i
+                                            className={`fas ${
+                                              isSelected
+                                                ? "fa-check"
+                                                : "fa-plus"
+                                            }`}
+                                          />
+                                          {isSelected
+                                            ? "Selected"
+                                            : "Select"}
+                                        </button>
+                                      )}
                                     </div>
 
                                     {isArray && isExpanded && (
@@ -3103,47 +3146,17 @@ export default function CreateCommand() {
                                         {children.map((child, ci) => {
                                           const isChildSelected =
                                             cmd.imageUrlKey === child;
-                                          let sampleVal = "";
-                                          if (apiResult?.ok) {
-                                            const parts = String(
-                                              child
-                                            ).split(".");
-                                            let cur = apiResult.data;
-                                            for (const p of parts) {
-                                              if (cur == null) break;
-                                              if (
-                                                Array.isArray(cur) &&
-                                                /^\d+$/.test(p)
-                                              ) {
-                                                cur =
-                                                  cur[parseInt(p, 10)];
-                                              } else {
-                                                cur = cur[p];
-                                              }
-                                            }
-                                            if (
-                                              cur !== undefined &&
-                                              cur !== null &&
-                                              typeof cur !== "object"
-                                            ) {
-                                              sampleVal = String(cur);
-                                            }
-                                          }
+                                          const sampleVal =
+                                            lookupSampleValue(child);
 
                                           return (
                                             <div
                                               key={ci}
-                                              className="field-child"
-                                              style={
+                                              className={`field-child ${
                                                 isChildSelected
-                                                  ? {
-                                                      borderColor:
-                                                        "rgba(34, 197, 94, 0.5)",
-                                                      background:
-                                                        "rgba(34, 197, 94, 0.08)",
-                                                    }
-                                                  : undefined
-                                              }
+                                                  ? "selected"
+                                                  : ""
+                                              }`}
                                               onClick={() =>
                                                 upd({
                                                   imageUrlKey: child,
@@ -3158,7 +3171,7 @@ export default function CreateCommand() {
                                                       : "fa-plus"
                                                   }`}
                                                 />
-                                                {child}
+                                                {`{{${child}}}`}
                                               </div>
                                               {sampleVal && (
                                                 <div className="field-child-sample">
