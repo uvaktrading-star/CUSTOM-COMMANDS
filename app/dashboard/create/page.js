@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const STEPS = [
@@ -19,10 +19,10 @@ function defaultCommand() {
     react: "",
     type: "simple",
     textConfig: {
-      contentType: "text", // text | image | audio | video
+      contentType: "text",
       contentValue: "",
-      caption: "", // for image/video
-      fileName: "", // (kept for backward compat, unused)
+      caption: "",
+      fileName: "",
     },
     apiConfig: {
       method: "GET",
@@ -53,8 +53,13 @@ export default function CreateCommand() {
   const [loadingExisting, setLoadingExisting] = useState(!!editName);
   const [existingCommands, setExistingCommands] = useState([]);
 
-  // 🔥 expanded array keys state
+  // 🔥 expanded array keys state (Step 3)
   const [expandedKeys, setExpandedKeys] = useState({});
+  // 🔥 expanded image keys state (Send with Image)
+  const [expandedImageKeys, setExpandedImageKeys] = useState({});
+
+  // 🔥 template textarea ref — cursor position insert කරන්න
+  const templateRef = useRef(null);
 
   useEffect(() => {
     if (!editName) return;
@@ -195,7 +200,6 @@ export default function CreateCommand() {
       };
 
       if (cmd.type === "simple") {
-        // 🔥 simple textConfig — image caption support
         payload.textConfig = {
           contentType: cmd.textConfig.contentType,
           contentValue: cmd.textConfig.contentValue,
@@ -239,10 +243,6 @@ export default function CreateCommand() {
     if (step === 1) return cmd.command.trim().length > 0;
     if (step === 2) {
       if (cmd.type === "simple") {
-        if (cmd.textConfig.contentType === "text") {
-          return cmd.textConfig.contentValue.trim().length > 0;
-        }
-        // image / audio / video — URL required
         return cmd.textConfig.contentValue.trim().length > 0;
       }
       return cmd.apiConfig.url.trim().length > 0;
@@ -250,9 +250,36 @@ export default function CreateCommand() {
     return true;
   }
 
+  /* ==================== INSERT AT CURSOR ==================== */
   function insertAtTemplate(key) {
     const token = `{{${key}}}`;
-    upd({ responseTemplate: (cmd.responseTemplate || "") + token });
+
+    // 🔥 cursor position එකට insert කරන්න
+    const el = templateRef.current;
+    if (el) {
+      const start = el.selectionStart ?? cmd.responseTemplate.length;
+      const end = el.selectionEnd ?? start;
+      const before = cmd.responseTemplate.slice(0, start);
+      const after = cmd.responseTemplate.slice(end);
+
+      // Smart spacing
+      const prefix = before && !/\s$/.test(before) ? " " : "";
+      const suffix = after && !/^\s/.test(after) ? " " : "";
+
+      const newValue = `${before}${prefix}${token}${suffix}${after}`;
+      upd({ responseTemplate: newValue });
+
+      // cursor එක token එකට පස්සෙ තියන්න
+      setTimeout(() => {
+        const newPos = start + prefix.length + token.length;
+        el.focus();
+        el.setSelectionRange(newPos, newPos);
+      }, 0);
+    } else {
+      // fallback — append
+      upd({ responseTemplate: (cmd.responseTemplate || "") + token });
+    }
+
     navigator.clipboard.writeText(token).catch(() => {});
   }
 
@@ -378,42 +405,31 @@ export default function CreateCommand() {
     return "";
   })();
 
-  // 🔥 Image keys filter
   const imageKeys = (cmd.apiConfig.extractedValues || []).filter((k) =>
     /image|img|photo|poster|thumbnail|picture|cover|icon|banner|thumb/i.test(k)
   );
 
   /* ==================== GROUP KEYS ==================== */
-  // 🔥 results.title, results.link වගේ array keys group කරන්න
   function groupTemplateKeys(keys) {
-    const groups = []; // { base: "results", expanded: false, items: [...] }
+    const groups = [];
     const seen = new Set();
 
     for (const key of keys) {
-      // detect: results.0.title, results.1.title → base = results.title
       const arrayMatch = key.match(/^(.+?)\.(\d+)\.(.+)$/);
       if (arrayMatch) {
         const base = `${arrayMatch[1]}.${arrayMatch[3]}`;
         if (!seen.has(base)) {
           seen.add(base);
-          // එම base එකට අදාළ හැම expansion එකක්ම එකතු කරන්න
           const expansions = keys.filter((k) => {
             const m = k.match(/^(.+?)\.(\d+)\.(.+)$/);
             return m && `${m[1]}.${m[3]}` === base;
           });
-          groups.push({
-            base,
-            items: expansions,
-          });
+          groups.push({ base, items: expansions });
         }
       } else {
-        // simple key — direct
         if (!seen.has(key)) {
           seen.add(key);
-          groups.push({
-            base: key,
-            items: [key],
-          });
+          groups.push({ base: key, items: [key] });
         }
       }
     }
@@ -425,11 +441,13 @@ export default function CreateCommand() {
     cmd.apiConfig.extractedValues || []
   );
 
+  // 🔥 Group image keys (for image selection)
+  const imageGroups = groupTemplateKeys(imageKeys);
+
   /* ==================== WHATSAPP-STYLE RENDER ==================== */
   function renderWhatsAppPreview(text) {
     if (!text) return [];
 
-    // Split by newlines into elements
     const lines = text.split("\n");
     const elements = [];
 
@@ -439,7 +457,6 @@ export default function CreateCommand() {
         return;
       }
 
-      // Quote line: starts with "> "
       if (line.startsWith("> ")) {
         elements.push({
           type: "quote",
@@ -449,8 +466,7 @@ export default function CreateCommand() {
         return;
       }
 
-      // Mono line: starts with ``` or ` ... `
-      const monoMatch = line.match(/^```(.+)```$/) || line.match(/^`(.+)`$/);
+      const monoMatch = line.match(/^```(.+)```$/) || line.match(/^`(.+)$/);
       if (monoMatch) {
         elements.push({
           type: "mono",
@@ -460,7 +476,6 @@ export default function CreateCommand() {
         return;
       }
 
-      // Otherwise — parse inline formatting
       elements.push({
         type: "text",
         content: parseInlineFormat(line),
@@ -474,22 +489,14 @@ export default function CreateCommand() {
   function parseInlineFormat(text) {
     if (!text) return text;
 
-    // Escape HTML first
     let out = text
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
 
-    // Bold: *text* → <b>text</b> (WhatsApp style)
     out = out.replace(/\*([^*\n]+?)\*/g, "<b>$1</b>");
-
-    // Italic: _text_ → <i>text</i>
     out = out.replace(/_([^_\n]+?)_/g, "<i>$1</i>");
-
-    // Strikethrough: ~text~ → <s>text</s>
     out = out.replace(/~([^~\n]+?)~/g, "<s>$1</s>");
-
-    // Mono inline: `text` → <code>text</code>
     out = out.replace(/`([^`\n]+?)`/g, "<code>$1</code>");
 
     return out;
@@ -824,7 +831,7 @@ export default function CreateCommand() {
           font-size: 0.85rem;
         }
 
-        /* ==================== TOGGLE (Has Query) ==================== */
+        /* ==================== TOGGLE (Has Query / Send with Image) ==================== */
         .toggle-row {
           display: flex;
           align-items: center;
@@ -836,7 +843,7 @@ export default function CreateCommand() {
           border: 1px solid rgba(59, 130, 246, 0.2);
           cursor: pointer;
           transition: all 0.25s ease;
-          height: 46px;
+          min-height: 46px;
         }
         .toggle-row:hover {
           border-color: rgba(59, 130, 246, 0.45);
@@ -852,6 +859,7 @@ export default function CreateCommand() {
         .toggle-row .toggle-info > i {
           color: #60a5fa;
           font-size: 0.9rem;
+          flex-shrink: 0;
         }
         .toggle-row .toggle-info .toggle-text {
           font-size: 0.82rem;
@@ -989,7 +997,7 @@ export default function CreateCommand() {
         }
         .test-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* ==================== TEST RESULT ==================== */
+        /* ==================== TEST RESULT (compact — step 2) ==================== */
         .test-result {
           margin-top: 20px;
           padding: 20px;
@@ -1057,154 +1065,120 @@ export default function CreateCommand() {
           font-weight: 600;
           margin: 4px 6px 0 0;
         }
-        .keys-label {
+
+        /* ==================== FIELDS BUTTONS (step 3) ==================== */
+        .fields-hint {
           display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 0.7rem;
-          color: rgba(255, 255, 255, 0.45);
-          text-transform: uppercase;
-          letter-spacing: 1.2px;
-          font-weight: 700;
-          margin: 18px 0 10px;
+          gap: 10px;
+          padding: 12px 14px;
+          border-radius: 10px;
+          background: rgba(59, 130, 246, 0.06);
+          border: 1px solid rgba(59, 130, 246, 0.2);
+          font-size: 0.75rem;
+          color: rgba(255, 255, 255, 0.6);
+          margin-bottom: 12px;
+          line-height: 1.5;
+        }
+        .fields-hint i {
+          color: #60a5fa;
+          font-size: 0.9rem;
+          flex-shrink: 0;
+          margin-top: 1px;
+        }
+        .fields-hint code {
+          background: rgba(0, 0, 0, 0.3);
+          padding: 1px 5px;
+          border-radius: 4px;
+          color: #22d3ee;
+          font-family: "SF Mono", "Consolas", monospace;
+          font-size: 0.72rem;
         }
 
-        /* ==================== KEY GROUPS (expandable) ==================== */
-        .key-groups {
+        .fields-wrap {
           display: flex;
-          flex-direction: column;
+          flex-wrap: wrap;
           gap: 8px;
-          max-height: 380px;
+          padding: 14px;
+          border-radius: 14px;
+          background: rgba(0, 0, 0, 0.25);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          max-height: 280px;
           overflow-y: auto;
-          padding-right: 4px;
         }
-        .key-groups::-webkit-scrollbar { width: 6px; }
-        .key-groups::-webkit-scrollbar-thumb {
+        .fields-wrap::-webkit-scrollbar { width: 6px; }
+        .fields-wrap::-webkit-scrollbar-thumb {
           background: rgba(59, 130, 246, 0.3);
           border-radius: 3px;
         }
 
-        .key-group {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 12px;
-          overflow: hidden;
-          transition: all 0.25s ease;
-        }
-        .key-group:hover {
-          border-color: rgba(59, 130, 246, 0.3);
-        }
-        .key-group.expanded {
-          border-color: rgba(6, 182, 212, 0.4);
-          background: rgba(6, 182, 212, 0.04);
-          box-shadow: 0 0 25px rgba(6, 182, 212, 0.1);
+        .field-chip-wrap {
+          display: inline-flex;
+          flex-direction: column;
+          gap: 6px;
         }
 
-        .key-group-header {
-          display: flex;
+        .field-chip {
+          display: inline-flex;
           align-items: center;
-          gap: 10px;
-          padding: 11px 14px;
+          gap: 6px;
+          padding: 7px 12px;
+          border-radius: 30px;
+          background: rgba(59, 130, 246, 0.1);
+          border: 1px solid rgba(59, 130, 246, 0.25);
+          color: #60a5fa;
+          font-size: 0.72rem;
+          font-weight: 700;
+          font-family: "SF Mono", "Consolas", monospace;
           cursor: pointer;
+          transition: all 0.2s ease;
           user-select: none;
-          transition: background 0.2s ease;
         }
-        .key-group-header:hover {
-          background: rgba(59, 130, 246, 0.06);
+        .field-chip:hover {
+          background: rgba(59, 130, 246, 0.2);
+          border-color: rgba(59, 130, 246, 0.5);
+          transform: translateY(-1px);
         }
-
-        .key-group-icon {
-          width: 26px;
-          height: 26px;
-          border-radius: 8px;
-          background: rgba(6, 182, 212, 0.12);
-          border: 1px solid rgba(6, 182, 212, 0.25);
-          display: grid;
-          place-items: center;
+        .field-chip.array {
+          background: rgba(6, 182, 212, 0.1);
+          border-color: rgba(6, 182, 212, 0.3);
           color: #22d3ee;
-          font-size: 0.7rem;
-          flex-shrink: 0;
-          transition: transform 0.3s ease;
         }
-        .key-group.expanded .key-group-icon {
-          background: linear-gradient(135deg, #06b6d4, #3b82f6);
-          color: #000;
+        .field-chip.array:hover {
+          background: rgba(6, 182, 212, 0.2);
+          border-color: rgba(6, 182, 212, 0.5);
+        }
+        .field-chip .field-chip-count {
+          background: rgba(34, 197, 94, 0.2);
+          color: #4ade80;
+          font-size: 0.6rem;
+          padding: 1px 6px;
+          border-radius: 20px;
+          font-weight: 800;
+        }
+        .field-chip .field-chip-chevron {
+          font-size: 0.6rem;
+          transition: transform 0.3s ease;
+          opacity: 0.7;
+        }
+        .field-chip.expanded .field-chip-chevron {
           transform: rotate(90deg);
         }
 
-        .key-group-info {
-          flex: 1;
-          min-width: 0;
-        }
-        .key-group-name {
-          color: #60a5fa;
-          font-family: "SF Mono", "Consolas", monospace;
-          font-weight: 700;
-          font-size: 0.8rem;
+        .field-children {
           display: flex;
-          align-items: center;
+          flex-direction: column;
           gap: 5px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        .key-group-name .count {
-          background: rgba(34, 197, 94, 0.15);
-          color: #4ade80;
-          font-size: 0.65rem;
-          padding: 1px 7px;
-          border-radius: 20px;
-          font-weight: 800;
-          margin-left: 4px;
-        }
-        .key-group-sample {
-          color: rgba(255, 255, 255, 0.4);
-          font-size: 0.68rem;
-          margin-top: 3px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .key-group-actions {
-          display: flex;
-          gap: 6px;
-          align-items: center;
-          flex-shrink: 0;
-        }
-        .key-group-insert {
-          padding: 5px 10px;
-          border-radius: 20px;
-          background: rgba(59, 130, 246, 0.12);
-          border: 1px solid rgba(59, 130, 246, 0.3);
-          color: #60a5fa;
-          font-size: 0.65rem;
-          font-weight: 700;
-          font-family: inherit;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-        }
-        .key-group-insert:hover {
-          background: linear-gradient(135deg, #3b82f6, #06b6d4);
-          color: #000;
-          border-color: transparent;
-        }
-
-        .key-group-children {
-          border-top: 1px solid rgba(255, 255, 255, 0.06);
           padding: 8px;
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 6px;
+          border-radius: 10px;
+          background: rgba(0, 0, 0, 0.35);
+          border: 1px solid rgba(6, 182, 212, 0.2);
           animation: expandDown 0.25s ease;
-          max-height: 320px;
+          margin-left: 6px;
+          max-height: 220px;
           overflow-y: auto;
         }
-        .key-group-children::-webkit-scrollbar { width: 5px; }
-        .key-group-children::-webkit-scrollbar-thumb {
+        .field-children::-webkit-scrollbar { width: 5px; }
+        .field-children::-webkit-scrollbar-thumb {
           background: rgba(6, 182, 212, 0.3);
           border-radius: 3px;
         }
@@ -1213,50 +1187,30 @@ export default function CreateCommand() {
           to { opacity: 1; transform: translateY(0); }
         }
 
-        .key-child {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 10px;
-          padding: 8px 12px;
-          background: rgba(0, 0, 0, 0.25);
-          border-radius: 8px;
-          border: 1px solid rgba(255, 255, 255, 0.04);
-          cursor: pointer;
-          transition: all 0.15s ease;
-        }
-        .key-child:hover {
-          background: rgba(6, 182, 212, 0.1);
-          border-color: rgba(6, 182, 212, 0.3);
-          transform: translateX(2px);
-        }
-        .key-child .key-child-name {
-          color: #22d3ee;
-          font-family: "SF Mono", "Consolas", monospace;
-          font-weight: 700;
-          font-size: 0.72rem;
-          display: flex;
+        .field-child {
+          display: inline-flex;
           align-items: center;
           gap: 6px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          min-width: 0;
-        }
-        .key-child .key-child-name i {
-          color: rgba(255, 255, 255, 0.3);
-          font-size: 0.6rem;
-          flex-shrink: 0;
-        }
-        .key-child .key-child-sample {
-          color: rgba(255, 255, 255, 0.45);
+          padding: 6px 10px;
+          border-radius: 20px;
+          background: rgba(6, 182, 212, 0.08);
+          border: 1px solid rgba(6, 182, 212, 0.2);
+          color: #22d3ee;
           font-size: 0.68rem;
+          font-weight: 600;
+          font-family: "SF Mono", "Consolas", monospace;
+          cursor: pointer;
+          transition: all 0.15s ease;
           white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          max-width: 45%;
-          text-align: right;
-          flex-shrink: 0;
+        }
+        .field-child:hover {
+          background: linear-gradient(135deg, #06b6d4, #3b82f6);
+          color: #000;
+          border-color: transparent;
+          transform: translateX(2px);
+        }
+        .field-child i {
+          font-size: 0.55rem;
         }
 
         /* ==================== CONTENT TYPE SELECTOR (simple) ==================== */
@@ -1711,11 +1665,18 @@ export default function CreateCommand() {
           gap: 6px;
           margin-top: 10px;
         }
-        .image-key-btn {
+
+        /* image expandable */
+        .image-chip-wrap {
+          display: inline-flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .image-chip {
           display: inline-flex;
           align-items: center;
-          gap: 5px;
-          padding: 5px 10px;
+          gap: 6px;
+          padding: 6px 11px;
           border-radius: 20px;
           background: rgba(6, 182, 212, 0.08);
           border: 1px solid rgba(6, 182, 212, 0.25);
@@ -1726,16 +1687,84 @@ export default function CreateCommand() {
           cursor: pointer;
           transition: all 0.2s ease;
         }
-        .image-key-btn:hover {
+        .image-chip:hover {
           background: rgba(6, 182, 212, 0.18);
           transform: translateY(-1px);
         }
-        .image-key-btn.selected {
+        .image-chip.selected {
           background: linear-gradient(135deg, #06b6d4, #3b82f6);
           color: #000;
           border-color: transparent;
         }
-        .image-key-btn i { font-size: 0.6rem; }
+        .image-chip .image-chip-count {
+          background: rgba(34, 197, 94, 0.2);
+          color: #4ade80;
+          font-size: 0.6rem;
+          padding: 1px 6px;
+          border-radius: 20px;
+          font-weight: 800;
+        }
+        .image-chip.selected .image-chip-count {
+          background: rgba(0, 0, 0, 0.2);
+          color: #000;
+        }
+        .image-chip .image-chip-chevron {
+          font-size: 0.6rem;
+          transition: transform 0.3s ease;
+          opacity: 0.7;
+        }
+        .image-chip.expanded .image-chip-chevron {
+          transform: rotate(90deg);
+        }
+
+        .image-children {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+          padding: 8px;
+          border-radius: 10px;
+          background: rgba(0, 0, 0, 0.35);
+          border: 1px solid rgba(6, 182, 212, 0.2);
+          animation: expandDown 0.25s ease;
+          margin-left: 6px;
+          max-height: 220px;
+          overflow-y: auto;
+        }
+        .image-children::-webkit-scrollbar { width: 5px; }
+        .image-children::-webkit-scrollbar-thumb {
+          background: rgba(6, 182, 212, 0.3);
+          border-radius: 3px;
+        }
+        .image-child {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 10px;
+          border-radius: 20px;
+          background: rgba(6, 182, 212, 0.08);
+          border: 1px solid rgba(6, 182, 212, 0.2);
+          color: #22d3ee;
+          font-size: 0.68rem;
+          font-weight: 600;
+          font-family: "SF Mono", "Consolas", monospace;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          white-space: nowrap;
+        }
+        .image-child:hover {
+          background: linear-gradient(135deg, #06b6d4, #3b82f6);
+          color: #000;
+          border-color: transparent;
+          transform: translateX(2px);
+        }
+        .image-child.selected {
+          background: linear-gradient(135deg, #22c55e, #4ade80);
+          color: #000;
+          border-color: transparent;
+        }
+        .image-child i {
+          font-size: 0.55rem;
+        }
 
         .image-preview {
           margin-top: 14px;
@@ -1800,14 +1829,6 @@ export default function CreateCommand() {
           font-family: "SF Mono", "Consolas", monospace;
           word-break: break-all;
           line-height: 1.5;
-        }
-        .image-preview-hint {
-          font-size: 0.68rem;
-          color: rgba(255, 255, 255, 0.35);
-          margin-top: 8px;
-          display: flex;
-          align-items: center;
-          gap: 6px;
         }
 
         /* ==================== API IMAGE DETECT BANNER ==================== */
@@ -2087,7 +2108,6 @@ export default function CreateCommand() {
               </div>
             </div>
 
-            {/* TEXT */}
             {cmd.textConfig.contentType === "text" && (
               <div className="field">
                 <label>
@@ -2109,7 +2129,6 @@ export default function CreateCommand() {
               </div>
             )}
 
-            {/* IMAGE */}
             {cmd.textConfig.contentType === "image" && (
               <>
                 <div className="field">
@@ -2145,7 +2164,6 @@ export default function CreateCommand() {
               </>
             )}
 
-            {/* AUDIO */}
             {cmd.textConfig.contentType === "audio" && (
               <div className="field">
                 <label>
@@ -2170,7 +2188,6 @@ export default function CreateCommand() {
               </div>
             )}
 
-            {/* VIDEO */}
             {cmd.textConfig.contentType === "video" && (
               <>
                 <div className="field">
@@ -2214,9 +2231,8 @@ export default function CreateCommand() {
             <div className="info-card">
               <i className="fas fa-circle-info" />
               <div>
-                API එකේ test කරලා එන values ටික next step එකේ
-                template එකට insert කරන්න පුළුවන්. Use{" "}
-                <code>{"{{key}}"}</code> format.
+                API එකේ test කරලා response එක check කරන්න. Next step එකේ
+                response message එක හදන්න පුළුවන්.
               </div>
             </div>
 
@@ -2417,7 +2433,8 @@ export default function CreateCommand() {
                   )}
                 </div>
 
-                {apiResult.arrays?.length > 0 && (
+                {/* 🔥 Step 2 එකේ fields list එක නොපෙන්නන්න — arrays විතරයි */}
+                {apiResult.ok && apiResult.arrays?.length > 0 && (
                   <div style={{ marginBottom: 14 }}>
                     {apiResult.arrays.map((a, i) => (
                       <span key={i} className="array-badge">
@@ -2428,159 +2445,13 @@ export default function CreateCommand() {
                   </div>
                 )}
 
-                {apiResult.templateKeys?.length > 0 && (
-                  <>
-                    <div className="keys-label">
-                      <i className="fas fa-key" />
-                      Available Fields — click to copy / expand
+                {apiResult.ok && (
+                  <div className="info-card" style={{ marginBottom: 0 }}>
+                    <i className="fas fa-circle-check" />
+                    <div>
+                      API එක හරි! Next click කරලා response message එක
+                      හදන්න.
                     </div>
-                    <div className="key-groups">
-                      {templateGroups.map((g, gi) => {
-                        const isArray = g.items.length > 1;
-                        const isExpanded = !!expandedKeys[g.base];
-                        return (
-                          <div
-                            key={gi}
-                            className={`key-group ${
-                              isExpanded ? "expanded" : ""
-                            }`}
-                          >
-                            <div
-                              className="key-group-header"
-                              onClick={() => {
-                                if (!isArray) {
-                                  navigator.clipboard
-                                    .writeText(`{{${g.base}}}`)
-                                    .catch(() => {});
-                                  return;
-                                }
-                                setExpandedKeys((prev) => ({
-                                  ...prev,
-                                  [g.base]: !prev[g.base],
-                                }));
-                              }}
-                            >
-                              <div className="key-group-icon">
-                                <i
-                                  className={`fas ${
-                                    isArray ? "fa-chevron-right" : "fa-copy"
-                                  }`}
-                                />
-                              </div>
-                              <div className="key-group-info">
-                                <div className="key-group-name">
-                                  {`{{${g.base}}}`}
-                                  {isArray && (
-                                    <span className="count">
-                                      {g.items.length}
-                                    </span>
-                                  )}
-                                </div>
-                                {isArray && !isExpanded && (
-                                  <div className="key-group-sample">
-                                    {g.items.length} variants — click to
-                                    expand
-                                  </div>
-                                )}
-                              </div>
-                              {!isArray && (
-                                <div className="key-group-actions">
-                                  <button
-                                    type="button"
-                                    className="key-group-insert"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      insertAtTemplate(g.base);
-                                    }}
-                                  >
-                                    <i className="fas fa-plus" />
-                                    Insert
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-
-                            {isArray && isExpanded && (
-                              <div className="key-group-children">
-                                {g.items.map((child, ci) => (
-                                  <div
-                                    key={ci}
-                                    className="key-child"
-                                    onClick={() => {
-                                      navigator.clipboard
-                                        .writeText(`{{${child}}}`)
-                                        .catch(() => {});
-                                      insertAtTemplate(child);
-                                    }}
-                                    title="Click to insert"
-                                  >
-                                    <div className="key-child-name">
-                                      <i className="fas fa-plus" />
-                                      {`{{${child}}}`}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-
-                {/* API Image detect banner */}
-                {apiResult.ok && imageKeys.length > 0 && !cmd.sendWithImage && (
-                  <div className="api-image-banner">
-                    {(() => {
-                      const firstImageKey = imageKeys[0];
-                      const parts = String(firstImageKey).split(".");
-                      let cur = apiResult.data;
-                      for (const p of parts) {
-                        if (cur == null) break;
-                        if (Array.isArray(cur) && /^\d+$/.test(p)) {
-                          cur = cur[parseInt(p, 10)];
-                        } else {
-                          cur = cur[p];
-                        }
-                      }
-                      if (typeof cur !== "string") return null;
-                      return (
-                        <>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={cur}
-                            alt="API image"
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                            }}
-                          />
-                          <div className="api-image-banner-info">
-                            <div className="api-image-banner-title">
-                              <i className="fas fa-image" />
-                              API එකෙන් image එකක් හම්බුනා!
-                            </div>
-                            <div className="api-image-banner-url">
-                              {String(cur).slice(0, 80)}...
-                            </div>
-                            <button
-                              type="button"
-                              className="api-image-banner-btn"
-                              onClick={() => {
-                                upd({
-                                  sendWithImage: true,
-                                  imageUrlKey: firstImageKey,
-                                  imageUrl: "",
-                                });
-                              }}
-                            >
-                              <i className="fas fa-check" />
-                              Use This Image
-                            </button>
-                          </div>
-                        </>
-                      );
-                    })()}
                   </div>
                 )}
               </div>
@@ -2601,7 +2472,6 @@ export default function CreateCommand() {
                   .{cmd.command || "(no name)"}
                 </div>
 
-                {/* Bot reply bubble */}
                 {cmd.type === "simple" ? (
                   cmd.textConfig.contentType === "image" ? (
                     <div className="chat-bubble bot" style={{ padding: 6 }}>
@@ -2613,10 +2483,6 @@ export default function CreateCommand() {
                             alt="preview"
                             onError={(e) => {
                               e.target.style.display = "none";
-                              e.target.parentElement.style.padding =
-                                "20px";
-                              e.target.parentElement.innerHTML =
-                                '<div style="color:rgba(255,255,255,0.4);text-align:center;font-size:0.8rem">❌ Image load failed</div>';
                             }}
                           />
                         ) : (
@@ -2736,7 +2602,6 @@ export default function CreateCommand() {
                       </div>
                     </div>
                   ) : (
-                    // Text
                     <div className="chat-bubble bot">
                       {renderWhatsAppPreview(
                         cmd.textConfig.contentValue || "(empty message)"
@@ -2769,7 +2634,6 @@ export default function CreateCommand() {
                     </div>
                   )
                 ) : (
-                  // API response
                   <>
                     {cmd.sendWithImage && resolvedImageUrl ? (
                       <div className="chat-bubble bot" style={{ padding: 6 }}>
@@ -2856,13 +2720,11 @@ export default function CreateCommand() {
                           })
                         ) : (
                           <span
-                            dangerouslySetInnerHTML={{
-                              __html: parseInlineFormat(
-                                cmd.responseTemplate ||
-                                  "🎬 *{{results.title}}*\n⭐ {{results.rating}} | {{results.year}}"
-                              ),
-                            }}
-                          />
+                            style={{ color: "rgba(255,255,255,0.4)" }}
+                          >
+                            (response message පෙන්නන්න fields එකක් insert
+                            කරන්න)
+                          </span>
                         )}
                       </div>
                     )}
@@ -2896,21 +2758,102 @@ export default function CreateCommand() {
 
             {cmd.type === "API" && (
               <>
+                {/* ==================== FIELDS BUTTONS ==================== */}
+                {cmd.apiConfig.extractedValues?.length > 0 && (
+                  <div className="field">
+                    <label>
+                      <i className="fas fa-key" />
+                      Available Fields — click to insert
+                    </label>
+
+                    <div className="fields-hint">
+                      <i className="fas fa-info-circle" />
+                      <div>
+                        Field එකක් click කරාම template එකට insert වෙනවා.{" "}
+                        <code>{"{{results.title}}"}</code> වගේ array field
+                        එකක් click කරාම expand වෙනවා — <code>{"{{results.0.title}}"}</code>,{" "}
+                        <code>{"{{results.1.title}}"}</code> වගේ.
+                      </div>
+                    </div>
+
+                    <div className="fields-wrap">
+                      {templateGroups.map((g, gi) => {
+                        const isArray = g.items.length > 1;
+                        const isExpanded = !!expandedKeys[g.base];
+                        return (
+                          <div key={gi} className="field-chip-wrap">
+                            <div
+                              className={`field-chip ${
+                                isArray ? "array" : ""
+                              } ${isExpanded ? "expanded" : ""}`}
+                              onClick={() => {
+                                if (!isArray) {
+                                  insertAtTemplate(g.base);
+                                  return;
+                                }
+                                setExpandedKeys((prev) => ({
+                                  ...prev,
+                                  [g.base]: !prev[g.base],
+                                }));
+                              }}
+                            >
+                              {isArray && (
+                                <i className="fas fa-chevron-right field-chip-chevron" />
+                              )}
+                              <span>{`{{${g.base}}}`}</span>
+                              {isArray && (
+                                <span className="field-chip-count">
+                                  {g.items.length}
+                                </span>
+                              )}
+                              {!isArray && (
+                                <i
+                                  className="fas fa-plus"
+                                  style={{ fontSize: "0.55rem", opacity: 0.7 }}
+                                />
+                              )}
+                            </div>
+
+                            {isArray && isExpanded && (
+                              <div className="field-children">
+                                {g.items.map((child, ci) => (
+                                  <div
+                                    key={ci}
+                                    className="field-child"
+                                    onClick={() =>
+                                      insertAtTemplate(child)
+                                    }
+                                  >
+                                    <i className="fas fa-plus" />
+                                    {`{{${child}}}`}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ==================== RESPONSE TEMPLATE ==================== */}
                 <div className="field">
                   <label>
                     <i className="fas fa-code" />
                     Response Template <span className="req">*</span>
                   </label>
                   <textarea
+                    ref={templateRef}
                     className={`textarea ${
                       templateValidation.errors.length > 0 ? "has-error" : ""
                     }`}
-                    placeholder={`🎬 *{{results.title}}*\n⭐ {{results.rating}} | {{results.year}}\n🔗 {{results.link}}`}
+                    placeholder={`Example:\n🎬 *{{results.0.title}}*\n⭐ {{results.0.rating}} | {{results.0.year}}\n🔗 {{results.0.link}}`}
                     value={cmd.responseTemplate}
                     onChange={(e) =>
                       upd({ responseTemplate: e.target.value })
                     }
-                    rows={6}
+                    rows={7}
                   />
 
                   {templateValidation.errors.length > 0 && (
@@ -2954,12 +2897,6 @@ export default function CreateCommand() {
                         Template syntax හරි
                       </div>
                     )}
-
-                  <div className="hint">
-                    <i className="fas fa-info-circle" />
-                    Use <code>{"{{key}}"}</code> — click කරන්න පහත fields වලින්
-                    insert කරන්න
-                  </div>
                 </div>
 
                 {/* ==================== SEND WITH IMAGE ==================== */}
@@ -2975,9 +2912,7 @@ export default function CreateCommand() {
                     <div className="toggle-info">
                       <i className="fas fa-image" />
                       <div>
-                        <div className="toggle-text">
-                          Send with Image
-                        </div>
+                        <div className="toggle-text">Send with Image</div>
                         <div className="toggle-sub">
                           {cmd.sendWithImage
                             ? "Image + caption එකට යවනවා"
@@ -3013,11 +2948,14 @@ export default function CreateCommand() {
                             cmd.imageUrlKey ? "active" : ""
                           }`}
                           onClick={() => {
-                            const first =
-                              imageKeys[0] ||
-                              cmd.apiConfig.extractedValues?.[0] ||
-                              "";
-                            upd({ imageUrlKey: first, imageUrl: "" });
+                            const firstImageGroup =
+                              imageGroups[0]?.base || imageKeys[0] || "";
+                            if (firstImageGroup) {
+                              upd({
+                                imageUrlKey: firstImageGroup,
+                                imageUrl: "",
+                              });
+                            }
                           }}
                         >
                           <i className="fas fa-code" />
@@ -3057,53 +2995,84 @@ export default function CreateCommand() {
                               color: "rgba(255,255,255,0.5)",
                             }}
                           >
-                            <i className="fas fa-code" /> Image URL Key (from
-                            API)
+                            <i className="fas fa-code" /> Image Key — click to
+                            select
                           </label>
-                          <div className="image-key-input">
-                            <input
-                              className="input"
-                              placeholder="e.g. results.0.image"
-                              value={cmd.imageUrlKey}
-                              onChange={(e) =>
-                                upd({ imageUrlKey: e.target.value })
-                              }
-                            />
-                            <button
-                              type="button"
-                              className="clear-btn"
-                              onClick={() => upd({ imageUrlKey: "" })}
-                              title="Clear"
-                            >
-                              <i className="fas fa-times" />
-                            </button>
-                          </div>
 
-                          {imageKeys.length > 0 && (
-                            <>
-                              <div className="image-key-hint">
-                                <i className="fas fa-magic" />
-                                Suggested image keys — click to select
-                              </div>
-                              <div className="image-keys-wrap">
-                                {imageKeys.slice(0, 8).map((k, i) => (
-                                  <button
-                                    key={i}
-                                    type="button"
-                                    className={`image-key-btn ${
-                                      cmd.imageUrlKey === k
-                                        ? "selected"
-                                        : ""
-                                    }`}
-                                    onClick={() => upd({ imageUrlKey: k })}
-                                    title={k}
-                                  >
-                                    <i className="fas fa-image" />
-                                    {k}
-                                  </button>
-                                ))}
-                              </div>
-                            </>
+                          {/* 🔥 image chips (expandable) */}
+                          {imageGroups.length > 0 && (
+                            <div className="image-keys-wrap">
+                              {imageGroups.map((g, gi) => {
+                                const isArray = g.items.length > 1;
+                                const isExpanded =
+                                  !!expandedImageKeys[g.base];
+                                const isSelected =
+                                  cmd.imageUrlKey === g.base;
+                                return (
+                                  <div key={gi} className="image-chip-wrap">
+                                    <div
+                                      className={`image-chip ${
+                                        isSelected ? "selected" : ""
+                                      } ${
+                                        isExpanded ? "expanded" : ""
+                                      }`}
+                                      onClick={() => {
+                                        if (!isArray) {
+                                          upd({ imageUrlKey: g.base });
+                                          return;
+                                        }
+                                        // array — expand + select base
+                                        upd({ imageUrlKey: g.base });
+                                        setExpandedImageKeys((prev) => ({
+                                          ...prev,
+                                          [g.base]: !prev[g.base],
+                                        }));
+                                      }}
+                                    >
+                                      {isArray && (
+                                        <i className="fas fa-chevron-right image-chip-chevron" />
+                                      )}
+                                      <i className="fas fa-image" />
+                                      <span>{g.base}</span>
+                                      {isArray && (
+                                        <span className="image-chip-count">
+                                          {g.items.length}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {isArray && isExpanded && (
+                                      <div className="image-children">
+                                        {g.items.map((child, ci) => (
+                                          <div
+                                            key={ci}
+                                            className={`image-child ${
+                                              cmd.imageUrlKey === child
+                                                ? "selected"
+                                                : ""
+                                            }`}
+                                            onClick={() =>
+                                              upd({ imageUrlKey: child })
+                                            }
+                                          >
+                                            <i className="fas fa-check" />
+                                            {child}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {imageGroups.length === 0 && (
+                            <div className="image-key-hint">
+                              <i className="fas fa-info-circle" />
+                              API test එකේ image field එකක් නෑ — Static URL
+                              use කරන්න
+                            </div>
                           )}
                         </div>
                       )}
