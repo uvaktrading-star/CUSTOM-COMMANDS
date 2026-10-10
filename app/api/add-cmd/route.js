@@ -89,8 +89,9 @@ function normalizePayload(body, userId) {
         .filter(Boolean)
     : [];
 
+  // 🔥 _id වෙනුවට userId
   const base = {
-    _id: userId,
+    userId: userId,
     command,
     aliase: aliases,
     desc: body.desc || "",
@@ -166,7 +167,8 @@ export async function GET(req) {
 
     await connectDB();
 
-    const commands = await Command.find({ _id: userId })
+    // 🔥 { _id: userId } → { userId }
+    const commands = await Command.find({ userId })
       .sort({ createdAt: -1 })
       .lean();
 
@@ -224,16 +226,16 @@ export async function POST(req) {
     const payload = normalizePayload(body, userId);
 
     /* ---------- check if update or create ---------- */
-    // 🔥 case-insensitive search — trim + lowercase already in normalizePayload
+    // 🔥 { _id: userId, ... } → { userId, ... }
     const existing = await Command.findOne({
-      _id: userId,
-      command: payload.command, // already lowercase
+      userId,
+      command: payload.command,
     }).lean();
 
     if (existing) {
       /* ---------- UPDATE ---------- */
       const updated = await Command.findOneAndUpdate(
-        { _id: userId, command: payload.command },
+        { userId, command: payload.command },
         { $set: payload },
         { new: true, lean: true }
       );
@@ -246,7 +248,8 @@ export async function POST(req) {
     }
 
     /* ---------- CREATE — 1. Max limit check ---------- */
-    const existingCount = await Command.countDocuments({ _id: userId });
+    // 🔥 { _id: userId } → { userId }
+    const existingCount = await Command.countDocuments({ userId });
     if (existingCount >= MAX_COMMANDS) {
       return NextResponse.json(
         {
@@ -260,8 +263,9 @@ export async function POST(req) {
     /* ---------- CREATE — 2. Alias conflict check ---------- */
     const aliases = payload.aliase || [];
     if (aliases.length > 0) {
+      // 🔥 { _id: userId, ... } → { userId, ... }
       const aliasConflict = await Command.findOne({
-        _id: userId,
+        userId,
         $or: [
           { command: { $in: aliases } },
           { aliase: { $in: aliases } },
@@ -324,6 +328,7 @@ export async function POST(req) {
 
 /* ======================================================
    DELETE — delete one command
+   query: /api/add-cmd?command=hello
    ====================================================== */
 export async function DELETE(req) {
   try {
@@ -347,8 +352,9 @@ export async function DELETE(req) {
 
     await connectDB();
 
+    // 🔥 { _id: userId } → { userId }
     const deleted = await Command.findOneAndDelete({
-      _id: userId,
+      userId,
       command,
     });
 
