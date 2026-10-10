@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-const STEPS = ["Details", "Response", "Test"];
+const STEPS = [
+  { n: 1, label: "Details", icon: "fa-circle-info" },
+  { n: 2, label: "Response", icon: "fa-message" },
+  { n: 3, label: "Test", icon: "fa-vial" },
+];
 
 function defaultCommand() {
   return {
@@ -11,7 +15,7 @@ function defaultCommand() {
     aliase: "",
     desc: "",
     react: "",
-    type: "simple", // "simple" | "API"
+    type: "simple",
     textConfig: {
       contentType: "text",
       contentValue: "",
@@ -42,7 +46,6 @@ export default function CreateCommand() {
   const [error, setError] = useState("");
   const [loadingExisting, setLoadingExisting] = useState(!!editName);
 
-  /* ---------- edit mode: load existing ---------- */
   useEffect(() => {
     if (!editName) return;
     (async () => {
@@ -79,14 +82,12 @@ export default function CreateCommand() {
     })();
   }, [editName]);
 
-  /* ---------- helpers ---------- */
   const upd = (patch) => setCmd((p) => ({ ...p, ...patch }));
   const updText = (patch) =>
     setCmd((p) => ({ ...p, textConfig: { ...p.textConfig, ...patch } }));
   const updApi = (patch) =>
     setCmd((p) => ({ ...p, apiConfig: { ...p.apiConfig, ...patch } }));
 
-  /* ---------- API test ---------- */
   async function testAPI() {
     setTesting(true);
     setApiResult(null);
@@ -113,13 +114,11 @@ export default function CreateCommand() {
     }
   }
 
-  /* ---------- submit ---------- */
   async function submit() {
     setError("");
     setSaving(true);
     try {
       const userId = localStorage.getItem("bot_id");
-
       const payload = {
         command: cmd.command.trim().toLowerCase(),
         aliase: cmd.aliase
@@ -164,7 +163,6 @@ export default function CreateCommand() {
     }
   }
 
-  /* ---------- validation per step ---------- */
   function canGoNext() {
     if (step === 1) return cmd.command.trim().length > 0;
     if (step === 2) {
@@ -176,10 +174,17 @@ export default function CreateCommand() {
     return true;
   }
 
+  function insertAtTemplate(key) {
+    const token = `{{${key}}}`;
+    upd({ responseTemplate: (cmd.responseTemplate || "") + token });
+    navigator.clipboard.writeText(token).catch(() => {});
+  }
+
   if (loadingExisting) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: "#888" }}>
-        Loading command...
+      <div className="wiz-loading">
+        <div className="wiz-spinner" />
+        <p>Loading command...</p>
       </div>
     );
   }
@@ -187,86 +192,184 @@ export default function CreateCommand() {
   return (
     <>
       <style jsx>{`
+        .wiz-loading {
+          padding: 80px 20px;
+          text-align: center;
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 0.9rem;
+        }
+        .wiz-spinner {
+          width: 42px;
+          height: 42px;
+          border: 3px solid rgba(59, 130, 246, 0.15);
+          border-top-color: #3b82f6;
+          border-radius: 50%;
+          animation: wizSpin 0.9s linear infinite;
+          margin: 0 auto 16px;
+        }
+        @keyframes wizSpin { to { transform: rotate(360deg); } }
+
+        /* ==================== HEADER ==================== */
         .wiz-header {
-          margin-bottom: 24px;
+          margin-bottom: 28px;
         }
         .wiz-title {
-          font-size: 1.7rem;
-          font-weight: 800;
-          letter-spacing: -0.5px;
+          font-size: 1.9rem;
+          font-weight: 900;
+          letter-spacing: -0.7px;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          flex-wrap: wrap;
+        }
+        .wiz-title .title-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(6, 182, 212, 0.15));
+          border: 1px solid rgba(59, 130, 246, 0.3);
+          display: grid;
+          place-items: center;
+          color: #60a5fa;
+          font-size: 1.15rem;
+          box-shadow: 0 0 30px rgba(59, 130, 246, 0.15);
+          flex-shrink: 0;
+        }
+        .wiz-title .blue {
+          background: linear-gradient(135deg, #3b82f6, #06b6d4);
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
         }
         .wiz-sub {
           color: rgba(255, 255, 255, 0.4);
           font-size: 0.85rem;
-          margin-top: 4px;
+          margin-top: 8px;
+          margin-left: 62px;
+        }
+        @media (max-width: 640px) {
+          .wiz-title { font-size: 1.45rem; gap: 10px; }
+          .wiz-title .title-icon { width: 40px; height: 40px; font-size: 1rem; }
+          .wiz-sub { margin-left: 50px; font-size: 0.78rem; }
         }
 
-        /* steps */
-        .steps {
-          display: flex;
-          gap: 8px;
-          margin-bottom: 24px;
-          overflow-x: auto;
-          padding-bottom: 4px;
-        }
-        .step-pill {
+        /* ==================== STEPS ==================== */
+        .steps-wrap {
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 10px 16px;
+          margin-bottom: 28px;
+          overflow-x: auto;
+          padding-bottom: 6px;
+          scrollbar-width: none;
+        }
+        .steps-wrap::-webkit-scrollbar { display: none; }
+
+        .step-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-shrink: 0;
+        }
+
+        .step-pill {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 11px 18px;
           border-radius: 30px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(8, 15, 30, 0.7);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(0, 150, 255, 0.12);
           font-size: 0.82rem;
           color: rgba(255, 255, 255, 0.45);
-          font-weight: 600;
+          font-weight: 700;
           white-space: nowrap;
-          transition: all 0.2s ease;
+          transition: all 0.3s ease;
+          letter-spacing: 0.3px;
         }
         .step-pill.active {
-          background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(6, 182, 212, 0.15));
-          border-color: rgba(59, 130, 246, 0.4);
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(6, 182, 212, 0.18));
+          border-color: rgba(59, 130, 246, 0.5);
           color: #fff;
+          box-shadow: 0 0 30px rgba(59, 130, 246, 0.25);
+          transform: scale(1.03);
         }
         .step-pill.done {
           color: #4ade80;
-          border-color: rgba(34, 197, 94, 0.3);
-          background: rgba(34, 197, 94, 0.08);
+          border-color: rgba(34, 197, 94, 0.4);
+          background: rgba(34, 197, 94, 0.1);
         }
+
         .step-num {
-          width: 22px;
-          height: 22px;
+          width: 24px;
+          height: 24px;
           border-radius: 50%;
           background: rgba(255, 255, 255, 0.08);
           display: grid;
           place-items: center;
-          font-size: 0.72rem;
+          font-size: 0.7rem;
           font-weight: 800;
+          flex-shrink: 0;
         }
         .step-pill.active .step-num {
-          background: #3b82f6;
-          color: #fff;
+          background: linear-gradient(135deg, #3b82f6, #06b6d4);
+          color: #000;
         }
         .step-pill.done .step-num {
           background: #22c55e;
           color: #000;
         }
 
-        /* panel */
-        .wiz-panel {
-          background: rgba(15, 20, 35, 0.5);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-          border-radius: 18px;
-          padding: 28px;
+        .step-connector {
+          width: 30px;
+          height: 2px;
+          background: rgba(255, 255, 255, 0.08);
+          border-radius: 2px;
+          flex-shrink: 0;
         }
-        @media (max-width: 600px) {
-          .wiz-panel { padding: 20px 16px; }
+        .step-connector.done {
+          background: linear-gradient(90deg, #22c55e, #4ade80);
         }
 
-        /* form */
-        .field {
-          margin-bottom: 18px;
+        @media (max-width: 640px) {
+          .step-pill { padding: 9px 14px; font-size: 0.75rem; }
+          .step-pill .step-label { display: none; }
+          .step-connector { width: 16px; }
         }
+
+        /* ==================== PANEL ==================== */
+        .wiz-panel {
+          background: rgba(8, 15, 30, 0.65);
+          backdrop-filter: blur(22px);
+          -webkit-backdrop-filter: blur(22px);
+          border: 1px solid rgba(0, 150, 255, 0.12);
+          border-radius: 24px;
+          padding: 32px;
+          position: relative;
+          overflow: hidden;
+        }
+        .wiz-panel::before {
+          content: "";
+          position: absolute;
+          top: -100px;
+          right: -100px;
+          width: 300px;
+          height: 300px;
+          background: radial-gradient(circle, rgba(59, 130, 246, 0.08), transparent 70%);
+          pointer-events: none;
+        }
+        .wiz-panel > * {
+          position: relative;
+          z-index: 1;
+        }
+
+        @media (max-width: 640px) {
+          .wiz-panel { padding: 22px 16px; border-radius: 20px; }
+        }
+
+        /* ==================== FIELDS ==================== */
+        .field { margin-bottom: 20px; }
         .field-row {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -277,261 +380,533 @@ export default function CreateCommand() {
         }
 
         .field label {
-          display: block;
-          font-size: 0.75rem;
-          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.72rem;
+          font-weight: 700;
           color: rgba(255, 255, 255, 0.5);
-          margin-bottom: 7px;
-          letter-spacing: 0.5px;
+          margin-bottom: 8px;
+          letter-spacing: 0.8px;
           text-transform: uppercase;
+        }
+        .field label i {
+          color: #3b82f6;
+          font-size: 0.7rem;
         }
         .field label .req {
           color: #f87171;
           margin-left: 2px;
         }
         .field .hint {
-          font-size: 0.7rem;
-          color: rgba(255, 255, 255, 0.3);
-          margin-top: 6px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.72rem;
+          color: rgba(255, 255, 255, 0.35);
+          margin-top: 8px;
+        }
+        .field .hint i {
+          color: #3b82f6;
+          font-size: 0.65rem;
         }
 
         .input,
         .textarea,
         .select {
           width: 100%;
-          padding: 12px 14px;
+          padding: 13px 16px;
           background: rgba(0, 0, 0, 0.3);
           border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 10px;
+          border-radius: 12px;
           color: #fff;
           font-size: 0.88rem;
           font-family: inherit;
           outline: none;
-          transition: all 0.15s ease;
+          transition: all 0.2s ease;
         }
         .input:focus,
         .textarea:focus,
         .select:focus {
           border-color: #3b82f6;
-          background: rgba(0, 0, 0, 0.4);
+          background: rgba(0, 0, 0, 0.45);
+          box-shadow: 0 0 25px rgba(59, 130, 246, 0.1);
         }
+        .input::placeholder,
+        .textarea::placeholder {
+          color: rgba(255, 255, 255, 0.2);
+        }
+
+        .input-icon-wrap {
+          position: relative;
+        }
+        .input-icon-wrap > i {
+          position: absolute;
+          left: 16px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: rgba(255, 255, 255, 0.25);
+          font-size: 0.85rem;
+          pointer-events: none;
+        }
+        .input-icon-wrap .input {
+          padding-left: 44px;
+        }
+
         .textarea {
           resize: vertical;
-          min-height: 100px;
-          line-height: 1.5;
+          min-height: 110px;
+          line-height: 1.55;
           font-family: "SF Mono", "Consolas", monospace;
           font-size: 0.85rem;
         }
         .select {
           cursor: pointer;
           appearance: none;
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
           background-repeat: no-repeat;
-          background-position: right 14px center;
-          padding-right: 36px;
+          background-position: right 16px center;
+          padding-right: 42px;
         }
 
-        /* type toggle */
+        /* ==================== TYPE SELECTOR ==================== */
         .type-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 12px;
+          gap: 14px;
         }
+        @media (max-width: 500px) {
+          .type-grid { grid-template-columns: 1fr; }
+        }
+
         .type-card {
-          padding: 18px 16px;
-          border-radius: 14px;
-          border: 1.5px solid rgba(255, 255, 255, 0.06);
+          padding: 22px 18px;
+          border-radius: 18px;
+          border: 1.5px solid rgba(255, 255, 255, 0.08);
           background: rgba(0, 0, 0, 0.25);
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.3s ease;
           text-align: center;
+          position: relative;
+          overflow: hidden;
+        }
+        .type-card::before {
+          content: "";
+          position: absolute;
+          top: -50%;
+          right: -50%;
+          width: 100%;
+          height: 100%;
+          background: radial-gradient(circle, rgba(59, 130, 246, 0.1), transparent 70%);
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          pointer-events: none;
         }
         .type-card:hover {
-          border-color: rgba(59, 130, 246, 0.3);
+          border-color: rgba(59, 130, 246, 0.4);
+          transform: translateY(-2px);
+        }
+        .type-card:hover::before {
+          opacity: 1;
         }
         .type-card.active {
           border-color: #3b82f6;
-          background: rgba(59, 130, 246, 0.08);
-          box-shadow: 0 0 30px rgba(59, 130, 246, 0.15);
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(6, 182, 212, 0.08));
+          box-shadow: 0 0 40px rgba(59, 130, 246, 0.2);
         }
-        .type-icon {
-          font-size: 1.6rem;
-          margin-bottom: 8px;
-        }
-        .type-name {
-          font-size: 0.9rem;
-          font-weight: 700;
-          margin-bottom: 4px;
-        }
-        .type-desc {
-          font-size: 0.72rem;
-          color: rgba(255, 255, 255, 0.4);
+        .type-card.active::before {
+          opacity: 1;
         }
 
-        /* queries */
+        .type-icon {
+          width: 52px;
+          height: 52px;
+          border-radius: 16px;
+          display: grid;
+          place-items: center;
+          margin: 0 auto 12px;
+          font-size: 1.3rem;
+          transition: transform 0.3s ease;
+        }
+        .type-card:hover .type-icon {
+          transform: scale(1.1) rotate(-5deg);
+        }
+        .type-card .type-icon.simple {
+          background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.15));
+          color: #4ade80;
+          border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        .type-card .type-icon.api {
+          background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(14, 165, 233, 0.15));
+          color: #22d3ee;
+          border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+
+        .type-name {
+          font-size: 0.98rem;
+          font-weight: 800;
+          margin-bottom: 4px;
+          position: relative;
+          z-index: 1;
+        }
+        .type-desc {
+          font-size: 0.75rem;
+          color: rgba(255, 255, 255, 0.45);
+          position: relative;
+          z-index: 1;
+        }
+
+        /* ==================== CHECKBOX ROW ==================== */
+        .checkbox-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 14px 16px;
+          border-radius: 12px;
+          background: rgba(0, 0, 0, 0.25);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          cursor: pointer;
+          font-size: 0.85rem;
+          transition: all 0.2s ease;
+        }
+        .checkbox-row:hover {
+          border-color: rgba(59, 130, 246, 0.3);
+        }
+        .checkbox-row input[type="checkbox"] {
+          accent-color: #3b82f6;
+          width: 18px;
+          height: 18px;
+          cursor: pointer;
+        }
+        .checkbox-row .label-text {
+          flex: 1;
+          text-transform: none;
+          letter-spacing: 0;
+          color: rgba(255, 255, 255, 0.75);
+          font-weight: 500;
+          font-size: 0.85rem;
+        }
+        .checkbox-row .toggle-hint {
+          font-size: 0.7rem;
+          color: rgba(255, 255, 255, 0.35);
+          margin-left: auto;
+        }
+
+        /* ==================== QUERY SECTION ==================== */
+        .query-section {
+          padding: 18px;
+          background: rgba(0, 0, 0, 0.2);
+          border: 1px dashed rgba(59, 130, 246, 0.25);
+          border-radius: 14px;
+          margin-bottom: 16px;
+        }
+
         .query-row {
           display: grid;
           grid-template-columns: 1fr 1fr auto;
           gap: 8px;
-          margin-bottom: 8px;
+          margin-bottom: 10px;
         }
+        @media (max-width: 500px) {
+          .query-row {
+            grid-template-columns: 1fr;
+            gap: 6px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+          }
+        }
+
         .query-remove {
-          width: 42px;
-          border-radius: 10px;
+          width: 44px;
+          border-radius: 12px;
           background: rgba(239, 68, 68, 0.1);
           border: 1px solid rgba(239, 68, 68, 0.2);
           color: #f87171;
           cursor: pointer;
-          font-size: 1rem;
-          transition: all 0.15s ease;
+          font-size: 0.95rem;
+          transition: all 0.2s ease;
+          display: grid;
+          place-items: center;
         }
         .query-remove:hover {
           background: rgba(239, 68, 68, 0.2);
         }
+        @media (max-width: 500px) {
+          .query-remove {
+            width: 100%;
+            height: 38px;
+          }
+        }
 
         .add-query {
-          padding: 9px 14px;
-          border-radius: 10px;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 16px;
+          border-radius: 12px;
           background: rgba(59, 130, 246, 0.08);
-          border: 1px dashed rgba(59, 130, 246, 0.3);
+          border: 1px dashed rgba(59, 130, 246, 0.35);
           color: #60a5fa;
-          font-size: 0.8rem;
-          font-weight: 600;
+          font-size: 0.82rem;
+          font-weight: 700;
           font-family: inherit;
           cursor: pointer;
-          transition: all 0.15s ease;
+          transition: all 0.2s ease;
           margin-top: 4px;
         }
         .add-query:hover {
           background: rgba(59, 130, 246, 0.15);
+          border-color: rgba(59, 130, 246, 0.6);
+          transform: translateY(-1px);
         }
 
-        /* test result */
+        /* ==================== TEST API BUTTON ==================== */
+        .test-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 14px 28px;
+          border-radius: 30px;
+          background: linear-gradient(135deg, #06b6d4, #3b82f6);
+          border: none;
+          color: #000;
+          font-weight: 800;
+          font-size: 0.82rem;
+          font-family: inherit;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          text-transform: uppercase;
+          letter-spacing: 1.2px;
+          box-shadow: 0 4px 25px rgba(6, 182, 212, 0.3);
+          margin-top: 4px;
+          position: relative;
+          overflow: hidden;
+        }
+        .test-btn::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(135deg, #3b82f6, #06b6d4);
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          z-index: 0;
+        }
+        .test-btn:hover::before {
+          opacity: 1;
+        }
+        .test-btn > * {
+          position: relative;
+          z-index: 1;
+        }
+        .test-btn:hover:not(:disabled) {
+          transform: translateY(-3px) scale(1.02);
+          box-shadow: 0 12px 40px rgba(6, 182, 212, 0.5);
+        }
+        .test-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        /* ==================== TEST RESULT ==================== */
         .test-result {
-          margin-top: 16px;
-          padding: 16px;
-          border-radius: 12px;
+          margin-top: 20px;
+          padding: 20px;
+          border-radius: 16px;
           background: rgba(0, 0, 0, 0.3);
-          border: 1px solid rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-8px); }
+          to { opacity: 1; transform: translateY(0); }
         }
         .test-result.success {
-          border-color: rgba(34, 197, 94, 0.3);
-          background: rgba(34, 197, 94, 0.05);
+          border-color: rgba(34, 197, 94, 0.35);
+          background: linear-gradient(135deg, rgba(34, 197, 94, 0.06), rgba(0, 0, 0, 0.3));
         }
         .test-result.error {
-          border-color: rgba(239, 68, 68, 0.3);
-          background: rgba(239, 68, 68, 0.05);
+          border-color: rgba(239, 68, 68, 0.35);
+          background: linear-gradient(135deg, rgba(239, 68, 68, 0.06), rgba(0, 0, 0, 0.3));
         }
 
         .result-head {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 12px;
-          font-size: 0.82rem;
+          margin-bottom: 16px;
+          font-size: 0.88rem;
           font-weight: 700;
+          gap: 12px;
+          flex-wrap: wrap;
         }
         .result-head.success { color: #4ade80; }
         .result-head.error { color: #f87171; }
+        .result-head .status-icon {
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          display: inline-grid;
+          place-items: center;
+          margin-right: 8px;
+          font-size: 0.75rem;
+        }
+        .result-head.success .status-icon {
+          background: rgba(34, 197, 94, 0.15);
+        }
+        .result-head.error .status-icon {
+          background: rgba(239, 68, 68, 0.15);
+        }
 
         .result-badge {
-          padding: 3px 9px;
+          padding: 5px 12px;
           border-radius: 20px;
-          font-size: 0.68rem;
+          font-size: 0.7rem;
           background: rgba(34, 197, 94, 0.15);
           color: #4ade80;
           font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
         }
 
         .array-badge {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          padding: 4px 10px;
+          padding: 5px 12px;
           border-radius: 20px;
           background: rgba(6, 182, 212, 0.1);
-          border: 1px solid rgba(6, 182, 212, 0.2);
+          border: 1px solid rgba(6, 182, 212, 0.25);
           color: #22d3ee;
-          font-size: 0.7rem;
+          font-size: 0.72rem;
           font-weight: 600;
-          margin: 4px 4px 0 0;
+          margin: 4px 6px 0 0;
         }
 
         .keys-label {
+          display: flex;
+          align-items: center;
+          gap: 8px;
           font-size: 0.7rem;
-          color: rgba(255, 255, 255, 0.4);
+          color: rgba(255, 255, 255, 0.45);
           text-transform: uppercase;
-          letter-spacing: 1px;
-          margin: 14px 0 8px;
+          letter-spacing: 1.2px;
+          font-weight: 700;
+          margin: 18px 0 10px;
+        }
+
+        .keys-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+          gap: 8px;
+          max-height: 320px;
+          overflow-y: auto;
+          padding-right: 4px;
+        }
+        .keys-grid::-webkit-scrollbar { width: 6px; }
+        .keys-grid::-webkit-scrollbar-track { background: transparent; }
+        .keys-grid::-webkit-scrollbar-thumb {
+          background: rgba(59, 130, 246, 0.3);
+          border-radius: 3px;
         }
 
         .key-item {
           display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 12px;
-          padding: 9px 12px;
+          flex-direction: column;
+          gap: 4px;
+          padding: 10px 12px;
           background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-          border-radius: 9px;
-          margin-bottom: 6px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 10px;
           cursor: pointer;
-          transition: all 0.15s ease;
-          font-size: 0.8rem;
+          transition: all 0.2s ease;
+          overflow: hidden;
         }
         .key-item:hover {
-          background: rgba(59, 130, 246, 0.08);
-          border-color: rgba(59, 130, 246, 0.25);
+          background: rgba(59, 130, 246, 0.1);
+          border-color: rgba(59, 130, 246, 0.35);
+          transform: translateY(-1px);
         }
-        .key-item code {
+        .key-item .key-name {
           color: #60a5fa;
           font-family: "SF Mono", "Consolas", monospace;
-          font-weight: 600;
-          font-size: 0.78rem;
-        }
-        .key-item .sample {
-          color: rgba(255, 255, 255, 0.5);
+          font-weight: 700;
           font-size: 0.75rem;
-          max-width: 50%;
+          display: flex;
+          align-items: center;
+          gap: 5px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          text-align: right;
+        }
+        .key-item .key-name i {
+          color: rgba(255, 255, 255, 0.3);
+          font-size: 0.6rem;
+        }
+        .key-item .sample {
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 0.7rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
-        .loading-keys {
-          text-align: center;
-          padding: 20px;
-          color: rgba(255, 255, 255, 0.4);
-          font-size: 0.85rem;
-        }
-
-        /* fake chat */
+        /* ==================== FAKE CHAT ==================== */
         .chat-window {
-          background: #0b141a;
-          border-radius: 14px;
-          padding: 20px;
-          max-height: 380px;
+          background: linear-gradient(180deg, #0b141a 0%, #0a1218 100%);
+          border-radius: 18px;
+          padding: 22px;
+          min-height: 200px;
+          max-height: 400px;
           overflow-y: auto;
           display: flex;
           flex-direction: column;
           gap: 10px;
           margin-bottom: 20px;
+          border: 1px solid rgba(0, 150, 255, 0.08);
+          position: relative;
         }
+        .chat-window::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background-image:
+            radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.03) 0%, transparent 40%),
+            radial-gradient(circle at 80% 70%, rgba(6, 182, 212, 0.03) 0%, transparent 40%);
+          pointer-events: none;
+          border-radius: 18px;
+        }
+
         .chat-bubble {
-          max-width: 78%;
-          padding: 10px 14px;
-          border-radius: 14px;
+          max-width: 82%;
+          padding: 11px 15px;
+          border-radius: 16px;
           font-size: 0.85rem;
           line-height: 1.5;
           white-space: pre-wrap;
           word-break: break-word;
+          position: relative;
+          z-index: 1;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
         }
         .chat-bubble.user {
           align-self: flex-end;
-          background: #005c4b;
+          background: linear-gradient(135deg, #005c4b, #006654);
           color: #e8ffe8;
           border-bottom-right-radius: 4px;
+        }
+        .chat-bubble.user::after {
+          content: "";
+          position: absolute;
+          right: -6px;
+          bottom: 0;
+          width: 0;
+          height: 0;
+          border-left: 8px solid #006654;
+          border-top: 8px solid transparent;
         }
         .chat-bubble.bot {
           align-self: flex-start;
@@ -539,58 +914,143 @@ export default function CreateCommand() {
           color: #e8e8e8;
           border-bottom-left-radius: 4px;
         }
+        .chat-bubble.bot::after {
+          content: "";
+          position: absolute;
+          left: -6px;
+          bottom: 0;
+          width: 0;
+          height: 0;
+          border-right: 8px solid #202c33;
+          border-top: 8px solid transparent;
+        }
         .chat-time {
-          font-size: 0.65rem;
-          color: rgba(255, 255, 255, 0.4);
+          font-size: 0.62rem;
+          color: rgba(255, 255, 255, 0.35);
           align-self: flex-end;
-          margin-top: -6px;
+          padding-right: 8px;
         }
 
-        /* nav */
+        /* ==================== NAV ==================== */
         .wiz-nav {
           display: flex;
           justify-content: space-between;
           gap: 12px;
-          margin-top: 24px;
-          padding-top: 20px;
-          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          margin-top: 28px;
+          padding-top: 24px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
         }
 
-        .error-banner {
-          padding: 12px 16px;
-          border-radius: 10px;
-          background: rgba(239, 68, 68, 0.1);
-          border: 1px solid rgba(239, 68, 68, 0.25);
-          color: #f87171;
-          font-size: 0.82rem;
-          margin-bottom: 16px;
-          display: flex;
+        .nav-btn {
+          display: inline-flex;
           align-items: center;
           gap: 8px;
+          padding: 13px 24px;
+          border-radius: 30px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.03);
+          color: rgba(255, 255, 255, 0.75);
+          font-size: 0.82rem;
+          font-weight: 700;
+          font-family: inherit;
+          cursor: pointer;
+          transition: all 0.25s ease;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+        .nav-btn:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.08);
+          color: #fff;
+          transform: translateY(-2px);
+        }
+        .nav-btn:disabled {
+          opacity: 0.35;
+          cursor: not-allowed;
         }
 
-        .checkbox-row {
+        .nav-btn.primary {
+          background: linear-gradient(135deg, #3b82f6, #06b6d4);
+          border-color: transparent;
+          color: #000;
+          box-shadow: 0 4px 25px rgba(59, 130, 246, 0.3);
+        }
+        .nav-btn.primary:hover:not(:disabled) {
+          transform: translateY(-3px) scale(1.02);
+          box-shadow: 0 12px 40px rgba(59, 130, 246, 0.5);
+        }
+        .nav-btn.primary:disabled {
+          opacity: 0.4;
+        }
+
+        @media (max-width: 500px) {
+          .wiz-nav { flex-direction: column-reverse; }
+          .nav-btn { justify-content: center; width: 100%; }
+        }
+
+        /* ==================== ERROR BANNER ==================== */
+        .error-banner {
           display: flex;
           align-items: center;
           gap: 10px;
-          padding: 12px 14px;
-          border-radius: 10px;
-          background: rgba(0, 0, 0, 0.25);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-          cursor: pointer;
+          padding: 14px 18px;
+          border-radius: 12px;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.25);
+          color: #f87171;
           font-size: 0.85rem;
+          margin-bottom: 20px;
+          animation: shake 0.4s ease;
         }
-        .checkbox-row input[type="checkbox"] {
-          accent-color: #3b82f6;
-          width: 16px;
-          height: 16px;
-          cursor: pointer;
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-6px); }
+          75% { transform: translateX(6px); }
+        }
+
+        /* ==================== INFO CARD ==================== */
+        .info-card {
+          display: flex;
+          gap: 12px;
+          padding: 14px 16px;
+          border-radius: 12px;
+          background: rgba(59, 130, 246, 0.06);
+          border: 1px solid rgba(59, 130, 246, 0.2);
+          font-size: 0.8rem;
+          color: rgba(255, 255, 255, 0.65);
+          margin-bottom: 18px;
+          line-height: 1.55;
+        }
+        .info-card i {
+          color: #60a5fa;
+          font-size: 1rem;
+          flex-shrink: 0;
+          margin-top: 2px;
+        }
+        .info-card code {
+          background: rgba(0, 0, 0, 0.3);
+          padding: 2px 6px;
+          border-radius: 6px;
+          color: #22d3ee;
+          font-family: "SF Mono", "Consolas", monospace;
+          font-size: 0.75rem;
         }
       `}</style>
 
+      {/* ==================== HEADER ==================== */}
       <div className="wiz-header">
         <h1 className="wiz-title">
-          {editName ? "Edit Command" : "Create Command"}
+          <div className="title-icon">
+            <i className={`fas ${editName ? "fa-pen-to-square" : "fa-plus"}`} />
+          </div>
+          {editName ? (
+            <>
+              Edit <span className="blue">Command</span>
+            </>
+          ) : (
+            <>
+              Create <span className="blue">Command</span>
+            </>
+          )}
         </h1>
         <p className="wiz-sub">
           {editName
@@ -599,71 +1059,88 @@ export default function CreateCommand() {
         </p>
       </div>
 
-      {/* Steps */}
-      <div className="steps">
-        {STEPS.map((label, i) => {
-          const n = i + 1;
-          const active = step === n;
-          const done = step > n;
-          return (
+      {/* ==================== STEPS ==================== */}
+      <div className="steps-wrap">
+        {STEPS.map((s, i) => (
+          <div key={s.n} className="step-item">
             <div
-              key={label}
-              className={`step-pill ${active ? "active" : ""} ${
-                done ? "done" : ""
-              }`}
+              className={`step-pill ${
+                step === s.n ? "active" : ""
+              } ${step > s.n ? "done" : ""}`}
             >
               <div className="step-num">
-                {done ? <i className="fas fa-check" /> : n}
+                {step > s.n ? <i className="fas fa-check" /> : s.n}
               </div>
-              {label}
+              <span className="step-label">{s.label}</span>
             </div>
-          );
-        })}
+            {i < STEPS.length - 1 && (
+              <div
+                className={`step-connector ${step > s.n ? "done" : ""}`}
+              />
+            )}
+          </div>
+        ))}
       </div>
 
-      {/* Panel */}
+      {/* ==================== PANEL ==================== */}
       <div className="wiz-panel">
         {error && (
           <div className="error-banner">
             <i className="fas fa-exclamation-circle" />
-            {error}
+            <span>{error}</span>
           </div>
         )}
 
-        {/* ================= STEP 1 ================= */}
+        {/* ==================== STEP 1: DETAILS ==================== */}
         {step === 1 && (
           <>
             <div className="field">
               <label>
+                <i className="fas fa-terminal" />
                 Command Name <span className="req">*</span>
               </label>
-              <input
-                className="input"
-                placeholder="e.g. movie, hello, weather"
-                value={cmd.command}
-                onChange={(e) => upd({ command: e.target.value })}
-              />
+              <div className="input-icon-wrap">
+                <i className="fas fa-slash" />
+                <input
+                  className="input"
+                  placeholder="e.g. movie, hello, weather"
+                  value={cmd.command}
+                  onChange={(e) => upd({ command: e.target.value })}
+                  autoFocus
+                />
+              </div>
               <div className="hint">
-                Bot එකට trigger කරන්න පාවිච්චි කරන keyword එක
+                <i className="fas fa-info-circle" />
+                Bot එකට trigger කරන්න පාවිච්චි කරන keyword එක (no spaces)
               </div>
             </div>
 
             <div className="field">
-              <label>Aliases</label>
-              <input
-                className="input"
-                placeholder="film, mv, search (comma separated)"
-                value={cmd.aliase}
-                onChange={(e) => upd({ aliase: e.target.value })}
-              />
+              <label>
+                <i className="fas fa-tags" />
+                Aliases
+              </label>
+              <div className="input-icon-wrap">
+                <i className="fas fa-link" />
+                <input
+                  className="input"
+                  placeholder="film, mv, search (comma separated)"
+                  value={cmd.aliase}
+                  onChange={(e) => upd({ aliase: e.target.value })}
+                />
+              </div>
               <div className="hint">
+                <i className="fas fa-info-circle" />
                 වෙනත් නම් වලින් command එක run කරන්න පුළුවන්
               </div>
             </div>
 
             <div className="field-row">
               <div className="field">
-                <label>Description</label>
+                <label>
+                  <i className="fas fa-align-left" />
+                  Description
+                </label>
                 <input
                   className="input"
                   placeholder="Short description"
@@ -672,18 +1149,23 @@ export default function CreateCommand() {
                 />
               </div>
               <div className="field">
-                <label>React Emoji</label>
+                <label>
+                  <i className="fas fa-smile" />
+                  React Emoji
+                </label>
                 <input
                   className="input"
                   placeholder="🎬"
                   value={cmd.react}
                   onChange={(e) => upd({ react: e.target.value })}
+                  maxLength={4}
                 />
               </div>
             </div>
 
             <div className="field">
               <label>
+                <i className="fas fa-layer-group" />
                 Command Type <span className="req">*</span>
               </label>
               <div className="type-grid">
@@ -693,44 +1175,60 @@ export default function CreateCommand() {
                   }`}
                   onClick={() => upd({ type: "simple" })}
                 >
-                  <div className="type-icon">💬</div>
+                  <div className="type-icon simple">
+                    <i className="fas fa-comment-dots" />
+                  </div>
                   <div className="type-name">Simple</div>
                   <div className="type-desc">Text, audio, video reply</div>
                 </div>
+
                 <div
                   className={`type-card ${
                     cmd.type === "API" ? "active" : ""
                   }`}
                   onClick={() => upd({ type: "API" })}
                 >
-                  <div className="type-icon">🔗</div>
+                  <div className="type-icon api">
+                    <i className="fas fa-bolt" />
+                  </div>
                   <div className="type-name">API</div>
                   <div className="type-desc">Dynamic from external API</div>
                 </div>
               </div>
             </div>
 
-            <div className="field">
+            <div className="field" style={{ marginBottom: 0 }}>
               <label
                 className="checkbox-row"
-                style={{ textTransform: "none", letterSpacing: 0, marginBottom: 0 }}
+                style={{
+                  textTransform: "none",
+                  letterSpacing: 0,
+                  marginBottom: 0,
+                }}
               >
                 <input
                   type="checkbox"
                   checked={cmd.isActive}
                   onChange={(e) => upd({ isActive: e.target.checked })}
                 />
-                Active (bot respond කරයි)
+                <span className="label-text">
+                  <i
+                    className="fas fa-circle-check"
+                    style={{ color: "#4ade80", marginRight: 6 }}
+                  />
+                  Active — bot respond කරයි
+                </span>
               </label>
             </div>
           </>
         )}
 
-        {/* ================= STEP 2 ================= */}
+        {/* ==================== STEP 2A: SIMPLE RESPONSE ==================== */}
         {step === 2 && cmd.type === "simple" && (
           <>
             <div className="field">
               <label>
+                <i className="fas fa-photo-film" />
                 Content Type <span className="req">*</span>
               </label>
               <select
@@ -738,15 +1236,16 @@ export default function CreateCommand() {
                 value={cmd.textConfig.contentType}
                 onChange={(e) => updText({ contentType: e.target.value })}
               >
-                <option value="text">📝 Text</option>
-                <option value="audio">🎵 Audio</option>
-                <option value="video">🎬 Video</option>
+                <option value="text">💬 Text Message</option>
+                <option value="audio">🎵 Audio File</option>
+                <option value="video">🎬 Video File</option>
               </select>
             </div>
 
             {cmd.textConfig.contentType === "text" ? (
               <div className="field">
                 <label>
+                  <i className="fas fa-message" />
                   Message Content <span className="req">*</span>
                 </label>
                 <textarea
@@ -754,35 +1253,60 @@ export default function CreateCommand() {
                   placeholder="Hello! How can I help you? 👋"
                   value={cmd.textConfig.contentValue}
                   onChange={(e) => updText({ contentValue: e.target.value })}
+                  rows={6}
                 />
+                <div className="hint">
+                  <i className="fas fa-info-circle" />
+                  ඔයාට ඕන message එක type කරන්න — emoji, line breaks support
+                </div>
               </div>
             ) : (
               <>
                 <div className="field">
                   <label>
+                    <i
+                      className={`fas ${
+                        cmd.textConfig.contentType === "audio"
+                          ? "fa-music"
+                          : "fa-video"
+                      }`}
+                    />
                     {cmd.textConfig.contentType === "audio"
                       ? "Audio URL"
                       : "Video URL"}{" "}
                     <span className="req">*</span>
                   </label>
-                  <input
-                    className="input"
-                    placeholder="https://example.com/file.mp3"
-                    value={cmd.textConfig.contentValue}
-                    onChange={(e) =>
-                      updText({ contentValue: e.target.value })
-                    }
-                  />
+                  <div className="input-icon-wrap">
+                    <i className="fas fa-link" />
+                    <input
+                      className="input"
+                      placeholder="https://example.com/file.mp3"
+                      value={cmd.textConfig.contentValue}
+                      onChange={(e) =>
+                        updText({ contentValue: e.target.value })
+                      }
+                    />
+                  </div>
                 </div>
+
                 {cmd.textConfig.contentType === "audio" && (
                   <div className="field">
-                    <label>File Name (optional)</label>
+                    <label>
+                      <i className="fas fa-file-audio" />
+                      File Name (optional)
+                    </label>
                     <input
                       className="input"
                       placeholder="song.mp3"
                       value={cmd.textConfig.fileName}
-                      onChange={(e) => updText({ fileName: e.target.value })}
+                      onChange={(e) =>
+                        updText({ fileName: e.target.value })
+                      }
                     />
+                    <div className="hint">
+                      <i className="fas fa-info-circle" />
+                      WhatsApp එකේ පෙන්නන file name එක
+                    </div>
                   </div>
                 )}
               </>
@@ -790,11 +1314,24 @@ export default function CreateCommand() {
           </>
         )}
 
+        {/* ==================== STEP 2B: API RESPONSE ==================== */}
         {step === 2 && cmd.type === "API" && (
           <>
+            <div className="info-card">
+              <i className="fas fa-circle-info" />
+              <div>
+                API එකේ test කරලා එන values ටික next step එකේ
+                template එකට insert කරන්න පුළුවන්. Use{" "}
+                <code>{"{{key}}"}</code> format.
+              </div>
+            </div>
+
             <div className="field-row">
               <div className="field">
-                <label>HTTP Method</label>
+                <label>
+                  <i className="fas fa-code-branch" />
+                  HTTP Method
+                </label>
                 <select
                   className="select"
                   value={cmd.apiConfig.method}
@@ -805,10 +1342,13 @@ export default function CreateCommand() {
                 </select>
               </div>
               <div className="field">
-                <label>Has Query?</label>
+                <label>
+                  <i className="fas fa-question-circle" />
+                  Has Query?
+                </label>
                 <label
                   className="checkbox-row"
-                  style={{ height: 44, padding: "0 14px" }}
+                  style={{ height: 46, padding: "0 16px" }}
                 >
                   <input
                     type="checkbox"
@@ -817,8 +1357,8 @@ export default function CreateCommand() {
                       updApi({ hasQuery: e.target.checked })
                     }
                   />
-                  <span style={{ fontSize: "0.82rem" }}>
-                    {cmd.apiConfig.hasQuery ? "Yes" : "No"}
+                  <span className="label-text">
+                    {cmd.apiConfig.hasQuery ? "Yes — add params" : "No"}
                   </span>
                 </label>
               </div>
@@ -826,85 +1366,113 @@ export default function CreateCommand() {
 
             <div className="field">
               <label>
+                <i className="fas fa-globe" />
                 API URL <span className="req">*</span>
               </label>
-              <input
-                className="input"
-                placeholder="https://api.example.com/search"
-                value={cmd.apiConfig.url}
-                onChange={(e) => updApi({ url: e.target.value })}
-              />
+              <div className="input-icon-wrap">
+                <i className="fas fa-link" />
+                <input
+                  className="input"
+                  placeholder="https://api.example.com/search"
+                  value={cmd.apiConfig.url}
+                  onChange={(e) => updApi({ url: e.target.value })}
+                />
+              </div>
             </div>
 
             {cmd.apiConfig.hasQuery && (
               <div className="field">
-                <label>Query Parameters</label>
-                {cmd.apiConfig.queries.map((q, i) => (
-                  <div key={i} className="query-row">
-                    <input
-                      className="input"
-                      placeholder="key (e.g. text)"
-                      value={q.key}
-                      onChange={(e) => {
-                        const arr = [...cmd.apiConfig.queries];
-                        arr[i] = { ...arr[i], key: e.target.value };
-                        updApi({ queries: arr });
-                      }}
-                    />
-                    <input
-                      className="input"
-                      placeholder="default value"
-                      value={q.defaultValue}
-                      onChange={(e) => {
-                        const arr = [...cmd.apiConfig.queries];
-                        arr[i] = { ...arr[i], defaultValue: e.target.value };
-                        updApi({ queries: arr });
-                      }}
-                    />
-                    <button
-                      className="query-remove"
-                      onClick={() => {
-                        const arr = cmd.apiConfig.queries.filter(
-                          (_, idx) => idx !== i
-                        );
-                        updApi({ queries: arr });
+                <label>
+                  <i className="fas fa-sliders" />
+                  Query Parameters
+                </label>
+                <div className="query-section">
+                  {cmd.apiConfig.queries.length === 0 && (
+                    <div
+                      style={{
+                        fontSize: "0.8rem",
+                        color: "rgba(255,255,255,0.35)",
+                        textAlign: "center",
+                        padding: "10px 0",
                       }}
                     >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-                <button
-                  className="add-query"
-                  onClick={() =>
-                    updApi({
-                      queries: [
-                        ...cmd.apiConfig.queries,
-                        { key: "", defaultValue: "" },
-                      ],
-                    })
-                  }
-                >
-                  <i className="fas fa-plus" /> Add Query
-                </button>
+                      No queries yet — click "Add Query" below
+                    </div>
+                  )}
+
+                  {cmd.apiConfig.queries.map((q, i) => (
+                    <div key={i} className="query-row">
+                      <input
+                        className="input"
+                        placeholder="key (e.g. text)"
+                        value={q.key}
+                        onChange={(e) => {
+                          const arr = [...cmd.apiConfig.queries];
+                          arr[i] = { ...arr[i], key: e.target.value };
+                          updApi({ queries: arr });
+                        }}
+                      />
+                      <input
+                        className="input"
+                        placeholder="default value"
+                        value={q.defaultValue}
+                        onChange={(e) => {
+                          const arr = [...cmd.apiConfig.queries];
+                          arr[i] = {
+                            ...arr[i],
+                            defaultValue: e.target.value,
+                          };
+                          updApi({ queries: arr });
+                        }}
+                      />
+                      <button
+                        className="query-remove"
+                        onClick={() => {
+                          const arr = cmd.apiConfig.queries.filter(
+                            (_, idx) => idx !== i
+                          );
+                          updApi({ queries: arr });
+                        }}
+                        title="Remove"
+                      >
+                        <i className="fas fa-trash" />
+                      </button>
+                    </div>
+                  ))}
+
+                  <button
+                    className="add-query"
+                    onClick={() =>
+                      updApi({
+                        queries: [
+                          ...cmd.apiConfig.queries,
+                          { key: "", defaultValue: "" },
+                        ],
+                      })
+                    }
+                  >
+                    <i className="fas fa-plus" />
+                    Add Query
+                  </button>
+                </div>
               </div>
             )}
 
             <button
-              className="btn btn-primary"
+              className="test-btn"
               onClick={testAPI}
-              disabled={
-                testing || !cmd.apiConfig.url.trim()
-              }
-              style={{ marginTop: 4 }}
+              disabled={testing || !cmd.apiConfig.url.trim()}
             >
               {testing ? (
                 <>
-                  <i className="fas fa-spinner fa-spin" /> Testing...
+                  <i className="fas fa-spinner fa-spin" />
+                  <span>Testing API...</span>
                 </>
               ) : (
                 <>
-                  <i className="fas fa-vial" /> Test API
+                  <i className="fas fa-vial" />
+                  <span>Test API</span>
+                  <i className="fas fa-arrow-right" />
                 </>
               )}
             </button>
@@ -920,49 +1488,67 @@ export default function CreateCommand() {
                     apiResult.ok ? "success" : "error"
                   }`}
                 >
-                  <span>
+                  <span style={{ display: "inline-flex", alignItems: "center" }}>
+                    <span className="status-icon">
+                      <i
+                        className={`fas ${
+                          apiResult.ok
+                            ? "fa-check"
+                            : "fa-triangle-exclamation"
+                        }`}
+                      />
+                    </span>
                     {apiResult.ok
-                      ? `✅ Success — HTTP ${apiResult.status}`
-                      : `❌ ${apiResult.error || "Failed"}`}
+                      ? `Success — HTTP ${apiResult.status}`
+                      : apiResult.error || "Failed"}
                   </span>
                   {apiResult.ok && (
                     <span className="result-badge">
-                      {apiResult.templateKeys?.length || 0} keys
+                      <i className="fas fa-key" />
+                      {apiResult.templateKeys?.length || 0} fields
                     </span>
                   )}
                 </div>
 
-                {/* Arrays */}
                 {apiResult.arrays?.length > 0 && (
-                  <div style={{ marginBottom: 12 }}>
+                  <div style={{ marginBottom: 14 }}>
                     {apiResult.arrays.map((a, i) => (
                       <span key={i} className="array-badge">
-                        <i className="fas fa-list" /> {a.path} ({a.count} items)
+                        <i className="fas fa-list-ul" />
+                        {a.path} ({a.count} items)
                       </span>
                     ))}
                   </div>
                 )}
 
-                {/* Keys */}
                 {apiResult.templateKeys?.length > 0 && (
                   <>
                     <div className="keys-label">
+                      <i className="fas fa-key" />
                       Available Fields — click to copy
                     </div>
-                    {apiResult.templateKeys.map((t, i) => (
-                      <div
-                        key={i}
-                        className="key-item"
-                        onClick={() => {
-                          navigator.clipboard.writeText(`{{${t.key}}}`);
-                        }}
-                      >
-                        <code>{`{{${t.key}}}`}</code>
-                        <span className="sample">
-                          {String(t.sample).slice(0, 60)}
-                        </span>
-                      </div>
-                    ))}
+                    <div className="keys-grid">
+                      {apiResult.templateKeys.map((t, i) => (
+                        <div
+                          key={i}
+                          className="key-item"
+                          onClick={() => {
+                            navigator.clipboard
+                              .writeText(`{{${t.key}}}`)
+                              .catch(() => {});
+                          }}
+                          title="Click to copy"
+                        >
+                          <div className="key-name">
+                            <i className="fas fa-copy" />
+                            {`{{${t.key}}}`}
+                          </div>
+                          <div className="sample">
+                            {String(t.sample).slice(0, 50)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </>
                 )}
               </div>
@@ -970,11 +1556,14 @@ export default function CreateCommand() {
           </>
         )}
 
-        {/* ================= STEP 3 ================= */}
+        {/* ==================== STEP 3: TEST ==================== */}
         {step === 3 && (
           <>
             <div className="field">
-              <label>Live Preview</label>
+              <label>
+                <i className="fas fa-comments" />
+                Live Preview
+              </label>
               <div className="chat-window">
                 <div className="chat-bubble user">
                   .{cmd.command || "(no name)"}
@@ -989,7 +1578,10 @@ export default function CreateCommand() {
                     : cmd.responseTemplate ||
                       "🎬 *{{results.title}}*\n⭐ {{results.rating}} | {{results.year}}\n🔗 {{results.link}}"}
                 </div>
-                <div className="chat-time">just now</div>
+                <div className="chat-time">
+                  <i className="fas fa-check-double" style={{ marginRight: 4 }} />
+                  just now
+                </div>
               </div>
             </div>
 
@@ -997,6 +1589,7 @@ export default function CreateCommand() {
               <>
                 <div className="field">
                   <label>
+                    <i className="fas fa-code" />
                     Response Template <span className="req">*</span>
                   </label>
                   <textarea
@@ -1006,17 +1599,21 @@ export default function CreateCommand() {
                     onChange={(e) =>
                       upd({ responseTemplate: e.target.value })
                     }
+                    rows={6}
                   />
                   <div className="hint">
-                    Use <code>{"{{key}}"}</code> from the API test — array
-                    fields වලට <code>{"{{results.title}}"}</code> වගේ use
-                    කරන්න (bot එකේ loop වෙනවා)
+                    <i className="fas fa-info-circle" />
+                    Use <code>{"{{key}}"}</code> — click කරන්න පහත fields වලින්
+                    insert කරන්න
                   </div>
                 </div>
 
                 {cmd.apiConfig.extractedValues?.length > 0 && (
                   <div className="field">
-                    <label>Saved Extracted Values</label>
+                    <label>
+                      <i className="fas fa-key" />
+                      Available Values — click to insert
+                    </label>
                     <div
                       style={{
                         display: "flex",
@@ -1025,27 +1622,50 @@ export default function CreateCommand() {
                       }}
                     >
                       {cmd.apiConfig.extractedValues.map((k, i) => (
-                        <span key={i} className="array-badge">
+                        <button
+                          key={i}
+                          type="button"
+                          className="array-badge"
+                          style={{
+                            cursor: "pointer",
+                            fontFamily: "inherit",
+                          }}
+                          onClick={() => insertAtTemplate(k)}
+                          title="Click to insert into template"
+                        >
+                          <i className="fas fa-plus" />
                           {`{{${k}}}`}
-                        </span>
+                        </button>
                       ))}
                     </div>
                   </div>
                 )}
               </>
             )}
+
+            {cmd.type === "simple" && (
+              <div className="info-card">
+                <i className="fas fa-circle-check" />
+                <div>
+                  This command will respond with{" "}
+                  <strong>{cmd.textConfig.contentType}</strong> content when
+                  users type <code>.{cmd.command}</code>
+                </div>
+              </div>
+            )}
           </>
         )}
 
-        {/* Nav */}
+        {/* ==================== NAV ==================== */}
         <div className="wiz-nav">
           {step > 1 ? (
             <button
-              className="btn"
+              className="nav-btn"
               onClick={() => setStep((s) => s - 1)}
               disabled={saving}
             >
-              <i className="fas fa-arrow-left" /> Back
+              <i className="fas fa-arrow-left" />
+              <span>Back</span>
             </button>
           ) : (
             <div />
@@ -1053,26 +1673,28 @@ export default function CreateCommand() {
 
           {step < 3 ? (
             <button
-              className="btn btn-primary"
+              className="nav-btn primary"
               onClick={() => setStep((s) => s + 1)}
               disabled={!canGoNext()}
             >
-              Next <i className="fas fa-arrow-right" />
+              <span>Next</span>
+              <i className="fas fa-arrow-right" />
             </button>
           ) : (
             <button
-              className="btn btn-primary"
+              className="nav-btn primary"
               onClick={submit}
               disabled={saving}
             >
               {saving ? (
                 <>
-                  <i className="fas fa-spinner fa-spin" /> Saving...
+                  <i className="fas fa-spinner fa-spin" />
+                  <span>Saving...</span>
                 </>
               ) : (
                 <>
-                  <i className="fas fa-check" />{" "}
-                  {editName ? "Update Command" : "Save Command"}
+                  <i className="fas fa-check" />
+                  <span>{editName ? "Update Command" : "Save Command"}</span>
                 </>
               )}
             </button>
