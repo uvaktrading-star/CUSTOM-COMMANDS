@@ -91,6 +91,34 @@ export default function DashboardHome() {
     <>
       <style jsx>{`
         /* ==================== PAGE HEADER ==================== */
+
+        /* ==================== CREATE BUTTON ==================== */
+.create-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 26px;
+  border-radius: 30px;
+  background: linear-gradient(135deg, #3b82f6, #06b6d4) !important;
+  color: #000 !important;
+  font-weight: 800;
+  font-size: 0.82rem;
+  font-family: inherit;
+  text-decoration: none !important;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 25px rgba(59, 130, 246, 0.3);
+  border: none !important;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
         .page-head {
           display: flex;
           justify-content: space-between;
@@ -761,13 +789,17 @@ export default function DashboardHome() {
           </div>
         </div>
 
-        <Link href="/dashboard/create" className="create-btn">
-          <span className="btn-icon">
-            <i className="fas fa-plus" />
-          </span>
-          <span>Create Command</span>
-          <i className="fas fa-arrow-right arrow" />
-        </Link>
+        <button
+  type="button"
+  onClick={() => router.push("/dashboard/create")}
+  className="create-btn"
+>
+  <span className="btn-icon">
+    <i className="fas fa-plus" />
+  </span>
+  <span>Create Command</span>
+  <i className="fas fa-arrow-right arrow" />
+</button>
       </div>
 
       {/* ==================== STATS ==================== */}
@@ -845,13 +877,17 @@ export default function DashboardHome() {
           <div className="state-sub">
             Create your first command to get started
           </div>
-          <Link href="/dashboard/create" className="create-btn">
-            <span className="btn-icon">
-              <i className="fas fa-plus" />
-            </span>
-            <span>Create First Command</span>
-            <i className="fas fa-arrow-right arrow" />
-          </Link>
+          <button
+  type="button"
+  onClick={() => router.push("/dashboard/create")}
+  className="create-btn"
+>
+  <span className="btn-icon">
+    <i className="fas fa-plus" />
+  </span>
+  <span>Create First Command</span>
+  <i className="fas fa-arrow-right arrow" />
+</button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="state-box">
