@@ -398,10 +398,7 @@ export default function CreateCommand() {
     return "";
   })();
 
-  const imageKeys = (cmd.apiConfig.extractedValues || []).filter((k) =>
-    /image|img|photo|poster|thumbnail|picture|cover|icon|banner|thumb/i.test(k)
-  );
-
+  /* ==================== GROUP KEYS (fallback) ==================== */
   function groupTemplateKeys(keys) {
     const groups = [];
     const seen = new Set();
@@ -445,6 +442,7 @@ export default function CreateCommand() {
     return groups;
   }
 
+  // 🔥 FULL template groups — backend එකෙන් හෝ fallback
   const templateGroups = (() => {
     if (apiResult?.templateGroups?.length) {
       return apiResult.templateGroups;
@@ -452,25 +450,34 @@ export default function CreateCommand() {
     return groupTemplateKeys(cmd.apiConfig.extractedValues || []);
   })();
 
+  // 🔥 Image groups — templateGroups එකෙන් filter කරන්න
+  // (backend එකෙන් එවන templateGroups use කරන නිසා isArray හරියට එනවා)
   const imageGroups = (() => {
-    const arr = (cmd.apiConfig.extractedValues || []).filter((k) =>
-      /image|img|photo|poster|thumbnail|picture|cover|icon|banner|thumb/i.test(
-        k
-      )
-    );
-    return groupTemplateKeys(arr);
+    // Backend templateGroups එකේ image-like keys filter කරන්න
+    const allGroups = apiResult?.templateGroups?.length
+      ? apiResult.templateGroups
+      : groupTemplateKeys(cmd.apiConfig.extractedValues || []);
+
+    return allGroups.filter((g) => {
+      const key = g.key || g.base || "";
+      return /image|img|photo|poster|thumbnail|picture|cover|icon|banner|thumb/i.test(
+        key
+      );
+    });
   })();
 
   /* ==================== WHATSAPP-STYLE RENDER ==================== */
   function renderWhatsAppPreview(text) {
     if (!text) return [];
 
+    // Split by \n — preserve EVERY line (including empty)
     const lines = text.split("\n");
     const elements = [];
 
     lines.forEach((line, i) => {
-      if (!line) {
-        elements.push({ type: "empty", key: `e-${i}` });
+      // Empty line → render <br>
+      if (line === "") {
+        elements.push({ type: "br", key: `br-${i}` });
         return;
       }
 
@@ -497,6 +504,7 @@ export default function CreateCommand() {
         type: "text",
         content: parseInlineFormat(line),
         key: `t-${i}`,
+        isLast: i === lines.length - 1,
       });
     });
 
@@ -517,6 +525,35 @@ export default function CreateCommand() {
     out = out.replace(/`([^`\n]+?)`/g, "<code>$1</code>");
 
     return out;
+  }
+
+  // 🔥 Render preview elements to JSX
+  function renderPreviewElements(elements) {
+    return elements.map((el, idx) => {
+      if (el.type === "br") {
+        return <br key={el.key || idx} />;
+      }
+      if (el.type === "quote") {
+        return (
+          <span key={el.key || idx} className="line-quote">
+            {el.content}
+          </span>
+        );
+      }
+      if (el.type === "mono") {
+        return (
+          <span key={el.key || idx} className="line-mono">
+            {el.content}
+          </span>
+        );
+      }
+      return (
+        <span
+          key={el.key || idx}
+          dangerouslySetInnerHTML={{ __html: el.content }}
+        />
+      );
+    });
   }
 
   /* ==================== SAMPLE LOOKUP HELPER ==================== */
@@ -566,7 +603,7 @@ export default function CreateCommand() {
         }
         @keyframes wizSpin { to { transform: rotate(360deg); } }
 
-        /* ==================== HEADER ==================== */
+        /* HEADER */
         .wiz-header { margin-bottom: 28px; }
         .wiz-title {
           font-size: 1.9rem;
@@ -608,7 +645,7 @@ export default function CreateCommand() {
           .wiz-sub { margin-left: 50px; font-size: 0.78rem; }
         }
 
-        /* ==================== STEPS ==================== */
+        /* STEPS */
         .steps-wrap {
           display: flex;
           align-items: center;
@@ -679,11 +716,10 @@ export default function CreateCommand() {
           .step-connector { width: 16px; }
         }
 
-        /* ==================== PANEL ==================== */
+        /* PANEL */
         .wiz-panel {
           background: rgba(8, 15, 30, 0.65);
           backdrop-filter: blur(22px);
-          -webkit-backdrop-filter: blur(22px);
           border: 1px solid rgba(0, 150, 255, 0.12);
           border-radius: 24px;
           padding: 32px;
@@ -705,7 +741,7 @@ export default function CreateCommand() {
           .wiz-panel { padding: 22px 16px; border-radius: 20px; }
         }
 
-        /* ==================== FIELDS ==================== */
+        /* FIELDS */
         .field { margin-bottom: 20px; }
         .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         @media (max-width: 600px) { .field-row { grid-template-columns: 1fr; } }
@@ -773,7 +809,6 @@ export default function CreateCommand() {
           line-height: 1.55;
           font-family: "SF Mono", "Consolas", monospace;
           font-size: 0.85rem;
-          white-space: pre-wrap;
         }
         .select {
           cursor: pointer;
@@ -784,7 +819,7 @@ export default function CreateCommand() {
           padding-right: 42px;
         }
 
-        /* ==================== TYPE SELECTOR ==================== */
+        /* TYPE SELECTOR */
         .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         @media (max-width: 500px) { .type-grid { grid-template-columns: 1fr; } }
         .type-card {
@@ -838,7 +873,7 @@ export default function CreateCommand() {
           color: rgba(255, 255, 255, 0.45);
         }
 
-        /* ==================== CHECKBOX ROW ==================== */
+        /* CHECKBOX ROW */
         .checkbox-row {
           display: flex;
           align-items: center;
@@ -867,7 +902,7 @@ export default function CreateCommand() {
           font-size: 0.85rem;
         }
 
-        /* ==================== TOGGLE ==================== */
+        /* TOGGLE */
         .toggle-row {
           display: flex;
           align-items: center;
@@ -944,7 +979,7 @@ export default function CreateCommand() {
           box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         }
 
-        /* ==================== QUERY SECTION ==================== */
+        /* QUERY SECTION */
         .query-section {
           padding: 18px;
           background: rgba(0, 0, 0, 0.2);
@@ -1006,7 +1041,7 @@ export default function CreateCommand() {
           transform: translateY(-1px);
         }
 
-        /* ==================== TEST API BUTTON ==================== */
+        /* TEST API BUTTON */
         .test-btn {
           display: inline-flex;
           align-items: center;
@@ -1033,7 +1068,7 @@ export default function CreateCommand() {
         }
         .test-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* ==================== TEST RESULT ==================== */
+        /* TEST RESULT */
         .test-result {
           margin-top: 20px;
           padding: 20px;
@@ -1102,7 +1137,34 @@ export default function CreateCommand() {
           margin: 4px 6px 0 0;
         }
 
-        /* ==================== DROPDOWN FIELD GROUPS ==================== */
+        /* DROPDOWN FIELD GROUPS */
+        .fields-hint {
+          display: flex;
+          gap: 10px;
+          padding: 12px 14px;
+          border-radius: 10px;
+          background: rgba(59, 130, 246, 0.06);
+          border: 1px solid rgba(59, 130, 246, 0.2);
+          font-size: 0.75rem;
+          color: rgba(255, 255, 255, 0.6);
+          margin-bottom: 12px;
+          line-height: 1.5;
+        }
+        .fields-hint i {
+          color: #60a5fa;
+          font-size: 0.9rem;
+          flex-shrink: 0;
+          margin-top: 1px;
+        }
+        .fields-hint code {
+          background: rgba(0, 0, 0, 0.3);
+          padding: 1px 5px;
+          border-radius: 4px;
+          color: #22d3ee;
+          font-family: "SF Mono", "Consolas", monospace;
+          font-size: 0.72rem;
+        }
+
         .fields-wrap {
           display: flex;
           flex-direction: column;
@@ -1287,7 +1349,7 @@ export default function CreateCommand() {
           flex-shrink: 0;
         }
 
-        /* ==================== CONTENT TYPE SELECTOR (simple) ==================== */
+        /* CONTENT TYPE SELECTOR */
         .content-type-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
@@ -1330,7 +1392,7 @@ export default function CreateCommand() {
         }
         .content-type-card.active .ct-label { color: #fff; }
 
-        /* ==================== FAKE CHAT ==================== */
+        /* FAKE CHAT */
         .chat-window {
           background: linear-gradient(180deg, #0b141a 0%, #0a1218 100%);
           border-radius: 18px;
@@ -1365,13 +1427,13 @@ export default function CreateCommand() {
           position: relative;
           z-index: 1;
           box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-          white-space: pre-wrap;
         }
         .chat-bubble.user {
           align-self: flex-end;
           background: linear-gradient(135deg, #005c4b, #006654);
           color: #e8ffe8;
           border-bottom-right-radius: 4px;
+          white-space: pre-wrap;
         }
         .chat-bubble.user::after {
           content: "";
@@ -1400,7 +1462,7 @@ export default function CreateCommand() {
           border-top: 8px solid transparent;
         }
 
-        /* 🔥 WhatsApp text formatting — preserves spaces & line breaks */
+        /* WhatsApp-style line elements */
         .chat-bubble.bot .line-mono {
           display: block;
           background: rgba(0, 0, 0, 0.4);
@@ -1433,8 +1495,13 @@ export default function CreateCommand() {
         .chat-bubble.bot b { font-weight: 900; color: #fff; }
         .chat-bubble.bot i { font-style: italic; }
         .chat-bubble.bot s { text-decoration: line-through; opacity: 0.7; }
-        .chat-bubble.bot .line-empty { display: block; height: 8px; }
+        .chat-bubble.bot br {
+          display: block;
+          content: "";
+          margin-top: 4px;
+        }
 
+        /* Image wrap */
         .chat-image-wrap {
           border-radius: 14px;
           overflow: hidden;
@@ -1465,7 +1532,11 @@ export default function CreateCommand() {
           color: #a5f3fc;
         }
         .chat-image-caption b { font-weight: 900; color: #fff; }
-        .chat-image-caption .line-empty { display: block; height: 8px; }
+        .chat-image-caption br {
+          display: block;
+          content: "";
+          margin-top: 4px;
+        }
         .chat-image-caption .line-mono {
           display: block;
           background: rgba(0, 0, 0, 0.4);
@@ -1493,7 +1564,7 @@ export default function CreateCommand() {
           padding-right: 8px;
         }
 
-        /* ==================== NAV ==================== */
+        /* NAV */
         .wiz-nav {
           display: flex;
           justify-content: space-between;
@@ -1541,7 +1612,7 @@ export default function CreateCommand() {
           .nav-btn { justify-content: center; width: 100%; }
         }
 
-        /* ==================== ERROR BANNER ==================== */
+        /* ERROR BANNER */
         .error-banner {
           display: flex;
           align-items: center;
@@ -1561,7 +1632,7 @@ export default function CreateCommand() {
           75% { transform: translateX(6px); }
         }
 
-        /* ==================== INFO CARD ==================== */
+        /* INFO CARD */
         .info-card {
           display: flex;
           gap: 12px;
@@ -1589,7 +1660,7 @@ export default function CreateCommand() {
           font-size: 0.75rem;
         }
 
-        /* ==================== SYNTAX FEEDBACK ==================== */
+        /* SYNTAX FEEDBACK */
         .textarea.has-error {
           border-color: rgba(239, 68, 68, 0.5) !important;
           box-shadow: 0 0 25px rgba(239, 68, 68, 0.15) !important;
@@ -1656,7 +1727,7 @@ export default function CreateCommand() {
           font-weight: 400;
         }
 
-        /* ==================== PREVIEW BADGE ==================== */
+        /* PREVIEW BADGE */
         .preview-badge {
           align-self: center;
           display: inline-flex;
@@ -1679,7 +1750,7 @@ export default function CreateCommand() {
           border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        /* ==================== IMAGE SECTION ==================== */
+        /* IMAGE SECTION */
         .image-config {
           padding: 18px;
           border-radius: 14px;
@@ -1720,29 +1791,6 @@ export default function CreateCommand() {
           background: linear-gradient(135deg, #06b6d4, #3b82f6);
           color: #000;
           box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
-        }
-
-        .image-key-input { position: relative; }
-        .image-key-input .input { padding-right: 44px; }
-        .image-key-input .clear-btn {
-          position: absolute;
-          right: 10px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 28px;
-          height: 28px;
-          border-radius: 8px;
-          background: rgba(239, 68, 68, 0.1);
-          border: 1px solid rgba(239, 68, 68, 0.2);
-          color: #f87171;
-          cursor: pointer;
-          display: grid;
-          place-items: center;
-          font-size: 0.75rem;
-          transition: all 0.2s ease;
-        }
-        .image-key-input .clear-btn:hover {
-          background: rgba(239, 68, 68, 0.2);
         }
 
         .image-key-hint {
@@ -1819,77 +1867,9 @@ export default function CreateCommand() {
           word-break: break-all;
           line-height: 1.5;
         }
-
-        /* ==================== API IMAGE DETECT BANNER ==================== */
-        .api-image-banner {
-          display: flex;
-          gap: 12px;
-          padding: 14px 16px;
-          border-radius: 12px;
-          background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(6, 182, 212, 0.06));
-          border: 1px solid rgba(34, 197, 94, 0.3);
-          margin-top: 12px;
-          animation: slideDown 0.3s ease;
-        }
-        .api-image-banner img {
-          width: 60px;
-          height: 60px;
-          object-fit: cover;
-          border-radius: 10px;
-          border: 2px solid rgba(34, 197, 94, 0.3);
-          flex-shrink: 0;
-        }
-        .api-image-banner-info {
-          flex: 1;
-          min-width: 0;
-        }
-        .api-image-banner-title {
-          font-size: 0.78rem;
-          font-weight: 700;
-          color: #4ade80;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          margin-bottom: 4px;
-        }
-        .api-image-banner-url {
-          font-size: 0.68rem;
-          color: rgba(255, 255, 255, 0.5);
-          font-family: "SF Mono", "Consolas", monospace;
-          word-break: break-all;
-          line-height: 1.4;
-          margin-bottom: 6px;
-        }
-        .api-image-banner-btn {
-          padding: 5px 12px;
-          border-radius: 20px;
-          background: linear-gradient(135deg, #22c55e, #4ade80);
-          border: none;
-          color: #000;
-          font-size: 0.7rem;
-          font-weight: 800;
-          font-family: inherit;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        .api-image-banner-btn:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 8px 20px rgba(34, 197, 94, 0.4);
-        }
-
-        /* 🔥 WhatsApp-like text render helper */
-        .wa-text {
-          white-space: pre-wrap;
-          word-break: break-word;
-        }
       `}</style>
 
-      {/* ==================== HEADER ==================== */}
+      {/* HEADER */}
       <div className="wiz-header">
         <h1 className="wiz-title">
           <div className="title-icon">
@@ -1912,7 +1892,7 @@ export default function CreateCommand() {
         </p>
       </div>
 
-      {/* ==================== STEPS ==================== */}
+      {/* STEPS */}
       <div className="steps-wrap">
         {STEPS.map((s, i) => (
           <div key={s.n} className="step-item">
@@ -1935,7 +1915,7 @@ export default function CreateCommand() {
         ))}
       </div>
 
-      {/* ==================== PANEL ==================== */}
+      {/* PANEL */}
       <div className="wiz-panel">
         {error && (
           <div className="error-banner">
@@ -1944,7 +1924,7 @@ export default function CreateCommand() {
           </div>
         )}
 
-        {/* ==================== STEP 1 ==================== */}
+        {/* STEP 1 */}
         {step === 1 && (
           <>
             <div className="field">
@@ -2072,7 +2052,7 @@ export default function CreateCommand() {
           </>
         )}
 
-        {/* ==================== STEP 2A ==================== */}
+        {/* STEP 2A */}
         {step === 2 && cmd.type === "simple" && (
           <>
             <div className="field">
@@ -2220,7 +2200,7 @@ export default function CreateCommand() {
           </>
         )}
 
-        {/* ==================== STEP 2B ==================== */}
+        {/* STEP 2B */}
         {step === 2 && cmd.type === "API" && (
           <>
             <div className="info-card">
@@ -2453,7 +2433,7 @@ export default function CreateCommand() {
           </>
         )}
 
-        {/* ==================== STEP 3 ==================== */}
+        {/* STEP 3 */}
         {step === 3 && (
           <>
             <div className="field">
@@ -2596,35 +2576,12 @@ export default function CreateCommand() {
                       </div>
                     </div>
                   ) : (
-                    <div className="chat-bubble bot wa-text">
-                      {renderWhatsAppPreview(
-                        cmd.textConfig.contentValue || "(empty message)"
-                      ).map((el) => {
-                        if (el.type === "empty")
-                          return (
-                            <span key={el.key} className="line-empty" />
-                          );
-                        if (el.type === "quote")
-                          return (
-                            <span key={el.key} className="line-quote">
-                              {el.content}
-                            </span>
-                          );
-                        if (el.type === "mono")
-                          return (
-                            <span key={el.key} className="line-mono">
-                              {el.content}
-                            </span>
-                          );
-                        return (
-                          <span
-                            key={el.key}
-                            dangerouslySetInnerHTML={{
-                              __html: el.content,
-                            }}
-                          />
-                        );
-                      })}
+                    <div className="chat-bubble bot">
+                      {renderPreviewElements(
+                        renderWhatsAppPreview(
+                          cmd.textConfig.contentValue || "(empty message)"
+                        )
+                      )}
                     </div>
                   )
                 ) : (
@@ -2642,76 +2599,19 @@ export default function CreateCommand() {
                           />
                           {renderedPreview && (
                             <div className="chat-image-caption">
-                              {renderWhatsAppPreview(renderedPreview).map(
-                                (el) => {
-                                  if (el.type === "empty")
-                                    return (
-                                      <span
-                                        key={el.key}
-                                        className="line-empty"
-                                      />
-                                    );
-                                  if (el.type === "quote")
-                                    return (
-                                      <span
-                                        key={el.key}
-                                        className="line-quote"
-                                      >
-                                        {el.content}
-                                      </span>
-                                    );
-                                  if (el.type === "mono")
-                                    return (
-                                      <span
-                                        key={el.key}
-                                        className="line-mono"
-                                      >
-                                        {el.content}
-                                      </span>
-                                    );
-                                  return (
-                                    <span
-                                      key={el.key}
-                                      dangerouslySetInnerHTML={{
-                                        __html: el.content,
-                                      }}
-                                    />
-                                  );
-                                }
+                              {renderPreviewElements(
+                                renderWhatsAppPreview(renderedPreview)
                               )}
                             </div>
                           )}
                         </div>
                       </div>
                     ) : (
-                      <div className="chat-bubble bot wa-text">
+                      <div className="chat-bubble bot">
                         {renderedPreview ? (
-                          renderWhatsAppPreview(renderedPreview).map((el) => {
-                            if (el.type === "empty")
-                              return (
-                                <span key={el.key} className="line-empty" />
-                              );
-                            if (el.type === "quote")
-                              return (
-                                <span key={el.key} className="line-quote">
-                                  {el.content}
-                                </span>
-                              );
-                            if (el.type === "mono")
-                              return (
-                                <span key={el.key} className="line-mono">
-                                  {el.content}
-                                </span>
-                              );
-                            return (
-                              <span
-                                key={el.key}
-                                dangerouslySetInnerHTML={{
-                                  __html: el.content,
-                                }}
-                              />
-                            );
-                          })
+                          renderPreviewElements(
+                            renderWhatsAppPreview(renderedPreview)
+                          )
                         ) : (
                           <span
                             style={{ color: "rgba(255,255,255,0.4)" }}
@@ -2752,7 +2652,7 @@ export default function CreateCommand() {
 
             {cmd.type === "API" && (
               <>
-                {/* ==================== RESPONSE TEMPLATE ==================== */}
+                {/* RESPONSE TEMPLATE */}
                 <div className="field">
                   <label>
                     <i className="fas fa-code" />
@@ -2814,7 +2714,7 @@ export default function CreateCommand() {
                     )}
                 </div>
 
-                {/* ==================== AVAILABLE FIELDS (dropdowns) ==================== */}
+                {/* AVAILABLE FIELDS */}
                 {cmd.apiConfig.extractedValues?.length > 0 && (
                   <div className="field">
                     <label>
@@ -2941,7 +2841,7 @@ export default function CreateCommand() {
                   </div>
                 )}
 
-                {/* ==================== SEND WITH IMAGE ==================== */}
+                {/* SEND WITH IMAGE */}
                 <div className="field">
                   <div
                     className={`toggle-row ${
@@ -2993,7 +2893,6 @@ export default function CreateCommand() {
                             const firstImageGroup =
                               imageGroups[0]?.key ||
                               imageGroups[0]?.base ||
-                              imageKeys[0] ||
                               "";
                             if (firstImageGroup) {
                               upd({
@@ -3044,7 +2943,7 @@ export default function CreateCommand() {
                             select
                           </label>
 
-                          {/* 🔥 image chip dropdowns — same style as fields */}
+                          {/* 🔥 image dropdown groups */}
                           {imageGroups.length > 0 && (
                             <div className="fields-wrap">
                               {imageGroups.map((g, gi) => {
@@ -3262,7 +3161,7 @@ export default function CreateCommand() {
           </>
         )}
 
-        {/* ==================== NAV ==================== */}
+        {/* NAV */}
         <div className="wiz-nav">
           {step > 1 ? (
             <button
