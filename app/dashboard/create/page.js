@@ -19,9 +19,10 @@ function defaultCommand() {
     react: "",
     type: "simple",
     textConfig: {
-      contentType: "text",
+      contentType: "text", // text | image | audio | video
       contentValue: "",
-      fileName: "",
+      caption: "", // for image/video
+      fileName: "", // (kept for backward compat, unused)
     },
     apiConfig: {
       method: "GET",
@@ -31,12 +32,9 @@ function defaultCommand() {
       extractedValues: [],
     },
     responseTemplate: "",
-
-    // 🔥 NEW: Image
     sendWithImage: false,
     imageUrl: "",
     imageUrlKey: "",
-
     isActive: true,
   };
 }
@@ -54,6 +52,9 @@ export default function CreateCommand() {
   const [error, setError] = useState("");
   const [loadingExisting, setLoadingExisting] = useState(!!editName);
   const [existingCommands, setExistingCommands] = useState([]);
+
+  // 🔥 expanded array keys state
+  const [expandedKeys, setExpandedKeys] = useState({});
 
   useEffect(() => {
     if (!editName) return;
@@ -91,7 +92,6 @@ export default function CreateCommand() {
     })();
   }, [editName]);
 
-  /* ---------- Load existing commands ---------- */
   useEffect(() => {
     (async () => {
       try {
@@ -102,9 +102,7 @@ export default function CreateCommand() {
         });
         const data = await res.json();
         if (data.ok) setExistingCommands(data.commands || []);
-      } catch {
-        // silent
-      }
+      } catch {}
     })();
   }, []);
 
@@ -129,7 +127,6 @@ export default function CreateCommand() {
       });
       const data = await res.json();
       setApiResult(data);
-
       if (data.ok) {
         updApi({ extractedValues: data.extractedValues || [] });
       }
@@ -140,21 +137,19 @@ export default function CreateCommand() {
     }
   }
 
-  /* ---------- Pre-submit validation ---------- */
   function validateBeforeSubmit() {
     const name = cmd.command.trim().toLowerCase();
-
     if (!name) return "Command name එක අනිවාර්යයි";
 
     const duplicate = existingCommands.find(
       (c) => c.command === name && c.command !== editName
     );
     if (duplicate) {
-      return `".${name}" කියන command එක දැනටමත් තියෙනවා. වෙන නමක් use කරන්න.`;
+      return `".${name}" කියන command එක දැනටමත් තියෙනවා.`;
     }
 
     if (!editName && existingCommands.length >= MAX_COMMANDS) {
-      return `ඔයාට උපරිම commands ${MAX_COMMANDS}ක් විතරයි හදන්න පුළුවන්. දැනටමත් ${existingCommands.length}ක් තියෙනවා.`;
+      return `ඔයාට උපරිම commands ${MAX_COMMANDS}ක් විතරයි හදන්න පුළුවන්.`;
     }
 
     const aliases = cmd.aliase
@@ -169,7 +164,7 @@ export default function CreateCommand() {
           (c.command === a || (c.aliase || []).includes(a))
       );
       if (conflict) {
-        return `Alias ".${a}" එක දැනටමත් ".${conflict.command}" command එකට අයිතියි.`;
+        return `Alias ".${a}" එක ".${conflict.command}" ට අයිතියි.`;
       }
     }
 
@@ -178,7 +173,6 @@ export default function CreateCommand() {
 
   async function submit() {
     setError("");
-
     const validationError = validateBeforeSubmit();
     if (validationError) {
       setError(validationError);
@@ -201,7 +195,13 @@ export default function CreateCommand() {
       };
 
       if (cmd.type === "simple") {
-        payload.textConfig = cmd.textConfig;
+        // 🔥 simple textConfig — image caption support
+        payload.textConfig = {
+          contentType: cmd.textConfig.contentType,
+          contentValue: cmd.textConfig.contentValue,
+          caption: cmd.textConfig.caption || "",
+          fileName: "",
+        };
       } else {
         payload.apiConfig = {
           method: cmd.apiConfig.method,
@@ -211,8 +211,6 @@ export default function CreateCommand() {
           extractedValues: cmd.apiConfig.extractedValues,
         };
         payload.responseTemplate = cmd.responseTemplate;
-
-        // 🔥 Image config
         payload.sendWithImage = !!cmd.sendWithImage;
         payload.imageUrl = cmd.imageUrl || "";
         payload.imageUrlKey = cmd.imageUrlKey || "";
@@ -241,6 +239,10 @@ export default function CreateCommand() {
     if (step === 1) return cmd.command.trim().length > 0;
     if (step === 2) {
       if (cmd.type === "simple") {
+        if (cmd.textConfig.contentType === "text") {
+          return cmd.textConfig.contentValue.trim().length > 0;
+        }
+        // image / audio / video — URL required
         return cmd.textConfig.contentValue.trim().length > 0;
       }
       return cmd.apiConfig.url.trim().length > 0;
@@ -357,11 +359,8 @@ export default function CreateCommand() {
 
   const hasApiTest = !!(apiResult && apiResult.ok);
 
-  // 🔥 Resolve image URL for preview
   const resolvedImageUrl = (() => {
     if (!cmd.sendWithImage) return "";
-
-    // From API key
     if (cmd.imageUrlKey && apiResult?.ok) {
       const parts = String(cmd.imageUrlKey).split(".");
       let cur = apiResult.data;
@@ -375,17 +374,126 @@ export default function CreateCommand() {
       }
       if (cur && typeof cur === "string") return cur;
     }
-
-    // Static URL fallback
     if (cmd.imageUrl) return cmd.imageUrl;
-
     return "";
   })();
 
-  // 🔥 Image-like keys filter
+  // 🔥 Image keys filter
   const imageKeys = (cmd.apiConfig.extractedValues || []).filter((k) =>
     /image|img|photo|poster|thumbnail|picture|cover|icon|banner|thumb/i.test(k)
   );
+
+  /* ==================== GROUP KEYS ==================== */
+  // 🔥 results.title, results.link වගේ array keys group කරන්න
+  function groupTemplateKeys(keys) {
+    const groups = []; // { base: "results", expanded: false, items: [...] }
+    const seen = new Set();
+
+    for (const key of keys) {
+      // detect: results.0.title, results.1.title → base = results.title
+      const arrayMatch = key.match(/^(.+?)\.(\d+)\.(.+)$/);
+      if (arrayMatch) {
+        const base = `${arrayMatch[1]}.${arrayMatch[3]}`;
+        if (!seen.has(base)) {
+          seen.add(base);
+          // එම base එකට අදාළ හැම expansion එකක්ම එකතු කරන්න
+          const expansions = keys.filter((k) => {
+            const m = k.match(/^(.+?)\.(\d+)\.(.+)$/);
+            return m && `${m[1]}.${m[3]}` === base;
+          });
+          groups.push({
+            base,
+            items: expansions,
+          });
+        }
+      } else {
+        // simple key — direct
+        if (!seen.has(key)) {
+          seen.add(key);
+          groups.push({
+            base: key,
+            items: [key],
+          });
+        }
+      }
+    }
+
+    return groups;
+  }
+
+  const templateGroups = groupTemplateKeys(
+    cmd.apiConfig.extractedValues || []
+  );
+
+  /* ==================== WHATSAPP-STYLE RENDER ==================== */
+  function renderWhatsAppPreview(text) {
+    if (!text) return [];
+
+    // Split by newlines into elements
+    const lines = text.split("\n");
+    const elements = [];
+
+    lines.forEach((line, i) => {
+      if (!line) {
+        elements.push({ type: "empty", key: `e-${i}` });
+        return;
+      }
+
+      // Quote line: starts with "> "
+      if (line.startsWith("> ")) {
+        elements.push({
+          type: "quote",
+          content: line.slice(2),
+          key: `q-${i}`,
+        });
+        return;
+      }
+
+      // Mono line: starts with ``` or ` ... `
+      const monoMatch = line.match(/^```(.+)```$/) || line.match(/^`(.+)`$/);
+      if (monoMatch) {
+        elements.push({
+          type: "mono",
+          content: monoMatch[1],
+          key: `m-${i}`,
+        });
+        return;
+      }
+
+      // Otherwise — parse inline formatting
+      elements.push({
+        type: "text",
+        content: parseInlineFormat(line),
+        key: `t-${i}`,
+      });
+    });
+
+    return elements;
+  }
+
+  function parseInlineFormat(text) {
+    if (!text) return text;
+
+    // Escape HTML first
+    let out = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    // Bold: *text* → <b>text</b> (WhatsApp style)
+    out = out.replace(/\*([^*\n]+?)\*/g, "<b>$1</b>");
+
+    // Italic: _text_ → <i>text</i>
+    out = out.replace(/_([^_\n]+?)_/g, "<i>$1</i>");
+
+    // Strikethrough: ~text~ → <s>text</s>
+    out = out.replace(/~([^~\n]+?)~/g, "<s>$1</s>");
+
+    // Mono inline: `text` → <code>text</code>
+    out = out.replace(/`([^`\n]+?)`/g, "<code>$1</code>");
+
+    return out;
+  }
 
   if (loadingExisting) {
     return (
@@ -469,12 +577,7 @@ export default function CreateCommand() {
           scrollbar-width: none;
         }
         .steps-wrap::-webkit-scrollbar { display: none; }
-        .step-item {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          flex-shrink: 0;
-        }
+        .step-item { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
         .step-pill {
           display: flex;
           align-items: center;
@@ -489,7 +592,6 @@ export default function CreateCommand() {
           font-weight: 700;
           white-space: nowrap;
           transition: all 0.3s ease;
-          letter-spacing: 0.3px;
         }
         .step-pill.active {
           background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(6, 182, 212, 0.18));
@@ -518,10 +620,7 @@ export default function CreateCommand() {
           background: linear-gradient(135deg, #3b82f6, #06b6d4);
           color: #000;
         }
-        .step-pill.done .step-num {
-          background: #22c55e;
-          color: #000;
-        }
+        .step-pill.done .step-num { background: #22c55e; color: #000; }
         .step-connector {
           width: 30px;
           height: 2px;
@@ -566,14 +665,8 @@ export default function CreateCommand() {
 
         /* ==================== FIELDS ==================== */
         .field { margin-bottom: 20px; }
-        .field-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 14px;
-        }
-        @media (max-width: 600px) {
-          .field-row { grid-template-columns: 1fr; }
-        }
+        .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 600px) { .field-row { grid-template-columns: 1fr; } }
         .field label {
           display: flex;
           align-items: center;
@@ -619,9 +712,7 @@ export default function CreateCommand() {
           box-shadow: 0 0 25px rgba(59, 130, 246, 0.1);
         }
         .input::placeholder,
-        .textarea::placeholder {
-          color: rgba(255, 255, 255, 0.2);
-        }
+        .textarea::placeholder { color: rgba(255, 255, 255, 0.2); }
         .input-icon-wrap { position: relative; }
         .input-icon-wrap > i {
           position: absolute;
@@ -651,14 +742,8 @@ export default function CreateCommand() {
         }
 
         /* ==================== TYPE SELECTOR ==================== */
-        .type-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 14px;
-        }
-        @media (max-width: 500px) {
-          .type-grid { grid-template-columns: 1fr; }
-        }
+        .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 500px) { .type-grid { grid-template-columns: 1fr; } }
         .type-card {
           padding: 22px 18px;
           border-radius: 18px;
@@ -670,29 +755,15 @@ export default function CreateCommand() {
           position: relative;
           overflow: hidden;
         }
-        .type-card::before {
-          content: "";
-          position: absolute;
-          top: -50%;
-          right: -50%;
-          width: 100%;
-          height: 100%;
-          background: radial-gradient(circle, rgba(59, 130, 246, 0.1), transparent 70%);
-          opacity: 0;
-          transition: opacity 0.3s ease;
-          pointer-events: none;
-        }
         .type-card:hover {
           border-color: rgba(59, 130, 246, 0.4);
           transform: translateY(-2px);
         }
-        .type-card:hover::before { opacity: 1; }
         .type-card.active {
           border-color: #3b82f6;
           background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(6, 182, 212, 0.08));
           box-shadow: 0 0 40px rgba(59, 130, 246, 0.2);
         }
-        .type-card.active::before { opacity: 1; }
         .type-icon {
           width: 52px;
           height: 52px;
@@ -703,9 +774,7 @@ export default function CreateCommand() {
           font-size: 1.3rem;
           transition: transform 0.3s ease;
         }
-        .type-card:hover .type-icon {
-          transform: scale(1.1) rotate(-5deg);
-        }
+        .type-card:hover .type-icon { transform: scale(1.1) rotate(-5deg); }
         .type-card .type-icon.simple {
           background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.15));
           color: #4ade80;
@@ -720,14 +789,10 @@ export default function CreateCommand() {
           font-size: 0.98rem;
           font-weight: 800;
           margin-bottom: 4px;
-          position: relative;
-          z-index: 1;
         }
         .type-desc {
           font-size: 0.75rem;
           color: rgba(255, 255, 255, 0.45);
-          position: relative;
-          z-index: 1;
         }
 
         /* ==================== CHECKBOX ROW ==================== */
@@ -757,6 +822,82 @@ export default function CreateCommand() {
           color: rgba(255, 255, 255, 0.75);
           font-weight: 500;
           font-size: 0.85rem;
+        }
+
+        /* ==================== TOGGLE (Has Query) ==================== */
+        .toggle-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 14px 18px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(6, 182, 212, 0.04));
+          border: 1px solid rgba(59, 130, 246, 0.2);
+          cursor: pointer;
+          transition: all 0.25s ease;
+          height: 46px;
+        }
+        .toggle-row:hover {
+          border-color: rgba(59, 130, 246, 0.45);
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(6, 182, 212, 0.06));
+        }
+        .toggle-row .toggle-info {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
+          flex: 1;
+        }
+        .toggle-row .toggle-info > i {
+          color: #60a5fa;
+          font-size: 0.9rem;
+        }
+        .toggle-row .toggle-info .toggle-text {
+          font-size: 0.82rem;
+          font-weight: 700;
+          color: rgba(255, 255, 255, 0.85);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .toggle-row .toggle-info .toggle-sub {
+          font-size: 0.68rem;
+          color: rgba(255, 255, 255, 0.4);
+          margin-top: 2px;
+          display: block;
+        }
+
+        .switch {
+          position: relative;
+          width: 46px;
+          height: 26px;
+          border-radius: 30px;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          flex-shrink: 0;
+        }
+        .switch::after {
+          content: "";
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.7);
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .switch.on {
+          background: linear-gradient(135deg, #3b82f6, #06b6d4);
+          border-color: transparent;
+          box-shadow: 0 0 18px rgba(59, 130, 246, 0.5);
+        }
+        .switch.on::after {
+          left: calc(100% - 22px);
+          background: #fff;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         }
 
         /* ==================== QUERY SECTION ==================== */
@@ -841,20 +982,7 @@ export default function CreateCommand() {
           letter-spacing: 1.2px;
           box-shadow: 0 4px 25px rgba(6, 182, 212, 0.3);
           margin-top: 4px;
-          position: relative;
-          overflow: hidden;
         }
-        .test-btn::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(135deg, #3b82f6, #06b6d4);
-          opacity: 0;
-          transition: opacity 0.3s ease;
-          z-index: 0;
-        }
-        .test-btn:hover::before { opacity: 1; }
-        .test-btn > * { position: relative; z-index: 1; }
         .test-btn:hover:not(:disabled) {
           transform: translateY(-3px) scale(1.02);
           box-shadow: 0 12px 40px rgba(6, 182, 212, 0.5);
@@ -940,42 +1068,79 @@ export default function CreateCommand() {
           font-weight: 700;
           margin: 18px 0 10px;
         }
-        .keys-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+
+        /* ==================== KEY GROUPS (expandable) ==================== */
+        .key-groups {
+          display: flex;
+          flex-direction: column;
           gap: 8px;
-          max-height: 320px;
+          max-height: 380px;
           overflow-y: auto;
           padding-right: 4px;
         }
-        .keys-grid::-webkit-scrollbar { width: 6px; }
-        .keys-grid::-webkit-scrollbar-track { background: transparent; }
-        .keys-grid::-webkit-scrollbar-thumb {
+        .key-groups::-webkit-scrollbar { width: 6px; }
+        .key-groups::-webkit-scrollbar-thumb {
           background: rgba(59, 130, 246, 0.3);
           border-radius: 3px;
         }
-        .key-item {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          padding: 10px 12px;
+
+        .key-group {
           background: rgba(255, 255, 255, 0.03);
           border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 10px;
-          cursor: pointer;
-          transition: all 0.2s ease;
+          border-radius: 12px;
           overflow: hidden;
+          transition: all 0.25s ease;
         }
-        .key-item:hover {
-          background: rgba(59, 130, 246, 0.1);
-          border-color: rgba(59, 130, 246, 0.35);
-          transform: translateY(-1px);
+        .key-group:hover {
+          border-color: rgba(59, 130, 246, 0.3);
         }
-        .key-item .key-name {
+        .key-group.expanded {
+          border-color: rgba(6, 182, 212, 0.4);
+          background: rgba(6, 182, 212, 0.04);
+          box-shadow: 0 0 25px rgba(6, 182, 212, 0.1);
+        }
+
+        .key-group-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 11px 14px;
+          cursor: pointer;
+          user-select: none;
+          transition: background 0.2s ease;
+        }
+        .key-group-header:hover {
+          background: rgba(59, 130, 246, 0.06);
+        }
+
+        .key-group-icon {
+          width: 26px;
+          height: 26px;
+          border-radius: 8px;
+          background: rgba(6, 182, 212, 0.12);
+          border: 1px solid rgba(6, 182, 212, 0.25);
+          display: grid;
+          place-items: center;
+          color: #22d3ee;
+          font-size: 0.7rem;
+          flex-shrink: 0;
+          transition: transform 0.3s ease;
+        }
+        .key-group.expanded .key-group-icon {
+          background: linear-gradient(135deg, #06b6d4, #3b82f6);
+          color: #000;
+          transform: rotate(90deg);
+        }
+
+        .key-group-info {
+          flex: 1;
+          min-width: 0;
+        }
+        .key-group-name {
           color: #60a5fa;
           font-family: "SF Mono", "Consolas", monospace;
           font-weight: 700;
-          font-size: 0.75rem;
+          font-size: 0.8rem;
           display: flex;
           align-items: center;
           gap: 5px;
@@ -983,17 +1148,159 @@ export default function CreateCommand() {
           overflow: hidden;
           text-overflow: ellipsis;
         }
-        .key-item .key-name i {
-          color: rgba(255, 255, 255, 0.3);
-          font-size: 0.6rem;
+        .key-group-name .count {
+          background: rgba(34, 197, 94, 0.15);
+          color: #4ade80;
+          font-size: 0.65rem;
+          padding: 1px 7px;
+          border-radius: 20px;
+          font-weight: 800;
+          margin-left: 4px;
         }
-        .key-item .sample {
-          color: rgba(255, 255, 255, 0.5);
-          font-size: 0.7rem;
+        .key-group-sample {
+          color: rgba(255, 255, 255, 0.4);
+          font-size: 0.68rem;
+          margin-top: 3px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
+
+        .key-group-actions {
+          display: flex;
+          gap: 6px;
+          align-items: center;
+          flex-shrink: 0;
+        }
+        .key-group-insert {
+          padding: 5px 10px;
+          border-radius: 20px;
+          background: rgba(59, 130, 246, 0.12);
+          border: 1px solid rgba(59, 130, 246, 0.3);
+          color: #60a5fa;
+          font-size: 0.65rem;
+          font-weight: 700;
+          font-family: inherit;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .key-group-insert:hover {
+          background: linear-gradient(135deg, #3b82f6, #06b6d4);
+          color: #000;
+          border-color: transparent;
+        }
+
+        .key-group-children {
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          padding: 8px;
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 6px;
+          animation: expandDown 0.25s ease;
+          max-height: 320px;
+          overflow-y: auto;
+        }
+        .key-group-children::-webkit-scrollbar { width: 5px; }
+        .key-group-children::-webkit-scrollbar-thumb {
+          background: rgba(6, 182, 212, 0.3);
+          border-radius: 3px;
+        }
+        @keyframes expandDown {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .key-child {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 12px;
+          background: rgba(0, 0, 0, 0.25);
+          border-radius: 8px;
+          border: 1px solid rgba(255, 255, 255, 0.04);
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .key-child:hover {
+          background: rgba(6, 182, 212, 0.1);
+          border-color: rgba(6, 182, 212, 0.3);
+          transform: translateX(2px);
+        }
+        .key-child .key-child-name {
+          color: #22d3ee;
+          font-family: "SF Mono", "Consolas", monospace;
+          font-weight: 700;
+          font-size: 0.72rem;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          min-width: 0;
+        }
+        .key-child .key-child-name i {
+          color: rgba(255, 255, 255, 0.3);
+          font-size: 0.6rem;
+          flex-shrink: 0;
+        }
+        .key-child .key-child-sample {
+          color: rgba(255, 255, 255, 0.45);
+          font-size: 0.68rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 45%;
+          text-align: right;
+          flex-shrink: 0;
+        }
+
+        /* ==================== CONTENT TYPE SELECTOR (simple) ==================== */
+        .content-type-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 10px;
+          margin-bottom: 20px;
+        }
+        @media (max-width: 500px) {
+          .content-type-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        .content-type-card {
+          padding: 16px 10px;
+          border-radius: 14px;
+          border: 1.5px solid rgba(255, 255, 255, 0.08);
+          background: rgba(0, 0, 0, 0.25);
+          cursor: pointer;
+          transition: all 0.25s ease;
+          text-align: center;
+        }
+        .content-type-card:hover {
+          border-color: rgba(59, 130, 246, 0.4);
+          transform: translateY(-2px);
+        }
+        .content-type-card.active {
+          border-color: #3b82f6;
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(6, 182, 212, 0.08));
+          box-shadow: 0 0 25px rgba(59, 130, 246, 0.2);
+        }
+        .content-type-card .ct-icon {
+          font-size: 1.2rem;
+          margin-bottom: 6px;
+          color: #60a5fa;
+        }
+        .content-type-card.active .ct-icon { color: #fff; }
+        .content-type-card .ct-label {
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: rgba(255, 255, 255, 0.7);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .content-type-card.active .ct-label { color: #fff; }
 
         /* ==================== FAKE CHAT ==================== */
         .chat-window {
@@ -1001,7 +1308,7 @@ export default function CreateCommand() {
           border-radius: 18px;
           padding: 22px;
           min-height: 200px;
-          max-height: 400px;
+          max-height: 500px;
           overflow-y: auto;
           display: flex;
           flex-direction: column;
@@ -1025,8 +1332,7 @@ export default function CreateCommand() {
           padding: 11px 15px;
           border-radius: 16px;
           font-size: 0.85rem;
-          line-height: 1.5;
-          white-space: pre-wrap;
+          line-height: 1.55;
           word-break: break-word;
           position: relative;
           z-index: 1;
@@ -1037,6 +1343,7 @@ export default function CreateCommand() {
           background: linear-gradient(135deg, #005c4b, #006654);
           color: #e8ffe8;
           border-bottom-right-radius: 4px;
+          white-space: pre-wrap;
         }
         .chat-bubble.user::after {
           content: "";
@@ -1064,6 +1371,71 @@ export default function CreateCommand() {
           border-right: 8px solid #202c33;
           border-top: 8px solid transparent;
         }
+
+        .chat-bubble.bot .line-mono {
+          display: block;
+          background: rgba(0, 0, 0, 0.4);
+          padding: 6px 10px;
+          border-radius: 8px;
+          font-family: "SF Mono", "Consolas", monospace;
+          font-size: 0.78rem;
+          color: #a5f3fc;
+          margin: 3px 0;
+          white-space: pre-wrap;
+          word-break: break-all;
+        }
+        .chat-bubble.bot .line-quote {
+          display: block;
+          border-left: 3px solid #22d3ee;
+          padding-left: 10px;
+          color: rgba(255, 255, 255, 0.7);
+          font-style: italic;
+          margin: 3px 0;
+        }
+        .chat-bubble.bot code {
+          background: rgba(0, 0, 0, 0.35);
+          padding: 1px 6px;
+          border-radius: 5px;
+          font-family: "SF Mono", "Consolas", monospace;
+          font-size: 0.85em;
+          color: #a5f3fc;
+        }
+        .chat-bubble.bot b { font-weight: 900; color: #fff; }
+        .chat-bubble.bot i { font-style: italic; }
+        .chat-bubble.bot s { text-decoration: line-through; opacity: 0.7; }
+        .chat-bubble.bot .line-empty { display: block; height: 6px; }
+
+        .chat-image-wrap {
+          border-radius: 14px;
+          overflow: hidden;
+          max-width: 280px;
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .chat-image-wrap img {
+          width: 100%;
+          display: block;
+          max-height: 280px;
+          object-fit: cover;
+        }
+        .chat-image-caption {
+          padding: 10px 12px;
+          font-size: 0.82rem;
+          line-height: 1.55;
+          color: #e8e8e8;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+        .chat-image-caption code {
+          background: rgba(0, 0, 0, 0.35);
+          padding: 1px 6px;
+          border-radius: 5px;
+          font-family: "SF Mono", "Consolas", monospace;
+          font-size: 0.85em;
+          color: #a5f3fc;
+        }
+        .chat-image-caption b { font-weight: 900; color: #fff; }
+
         .chat-time {
           font-size: 0.62rem;
           color: rgba(255, 255, 255, 0.35);
@@ -1390,8 +1762,8 @@ export default function CreateCommand() {
           align-items: center;
         }
         .image-preview-thumb {
-          width: 80px;
-          height: 80px;
+          width: 90px;
+          height: 90px;
           object-fit: cover;
           border-radius: 12px;
           border: 2px solid rgba(6, 182, 212, 0.3);
@@ -1436,6 +1808,68 @@ export default function CreateCommand() {
           display: flex;
           align-items: center;
           gap: 6px;
+        }
+
+        /* ==================== API IMAGE DETECT BANNER ==================== */
+        .api-image-banner {
+          display: flex;
+          gap: 12px;
+          padding: 14px 16px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(6, 182, 212, 0.06));
+          border: 1px solid rgba(34, 197, 94, 0.3);
+          margin-top: 12px;
+          animation: slideDown 0.3s ease;
+        }
+        .api-image-banner img {
+          width: 60px;
+          height: 60px;
+          object-fit: cover;
+          border-radius: 10px;
+          border: 2px solid rgba(34, 197, 94, 0.3);
+          flex-shrink: 0;
+        }
+        .api-image-banner-info {
+          flex: 1;
+          min-width: 0;
+        }
+        .api-image-banner-title {
+          font-size: 0.78rem;
+          font-weight: 700;
+          color: #4ade80;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 4px;
+        }
+        .api-image-banner-url {
+          font-size: 0.68rem;
+          color: rgba(255, 255, 255, 0.5);
+          font-family: "SF Mono", "Consolas", monospace;
+          word-break: break-all;
+          line-height: 1.4;
+          margin-bottom: 6px;
+        }
+        .api-image-banner-btn {
+          padding: 5px 12px;
+          border-radius: 20px;
+          background: linear-gradient(135deg, #22c55e, #4ade80);
+          border: none;
+          color: #000;
+          font-size: 0.7rem;
+          font-weight: 800;
+          font-family: inherit;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .api-image-banner-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 8px 20px rgba(34, 197, 94, 0.4);
         }
       `}</style>
 
@@ -1514,7 +1948,7 @@ export default function CreateCommand() {
               </div>
               <div className="hint">
                 <i className="fas fa-info-circle" />
-                Bot එකට trigger කරන්න පාවිච්චි කරන keyword එක (no spaces)
+                Bot එකට trigger කරන්න පාවිච්චි කරන keyword එක
               </div>
             </div>
 
@@ -1531,10 +1965,6 @@ export default function CreateCommand() {
                   value={cmd.aliase}
                   onChange={(e) => upd({ aliase: e.target.value })}
                 />
-              </div>
-              <div className="hint">
-                <i className="fas fa-info-circle" />
-                වෙනත් නම් වලින් command එක run කරන්න පුළුවන්
               </div>
             </div>
 
@@ -1582,7 +2012,7 @@ export default function CreateCommand() {
                     <i className="fas fa-comment-dots" />
                   </div>
                   <div className="type-name">Simple</div>
-                  <div className="type-desc">Text, audio, video reply</div>
+                  <div className="type-desc">Text, image, audio, video</div>
                 </div>
 
                 <div
@@ -1634,18 +2064,31 @@ export default function CreateCommand() {
                 <i className="fas fa-photo-film" />
                 Content Type <span className="req">*</span>
               </label>
-              <select
-                className="select"
-                value={cmd.textConfig.contentType}
-                onChange={(e) => updText({ contentType: e.target.value })}
-              >
-                <option value="text">💬 Text Message</option>
-                <option value="audio">🎵 Audio File</option>
-                <option value="video">🎬 Video File</option>
-              </select>
+              <div className="content-type-grid">
+                {[
+                  { v: "text", icon: "fa-message", label: "Text" },
+                  { v: "image", icon: "fa-image", label: "Image" },
+                  { v: "audio", icon: "fa-music", label: "Audio" },
+                  { v: "video", icon: "fa-video", label: "Video" },
+                ].map((t) => (
+                  <div
+                    key={t.v}
+                    className={`content-type-card ${
+                      cmd.textConfig.contentType === t.v ? "active" : ""
+                    }`}
+                    onClick={() => updText({ contentType: t.v })}
+                  >
+                    <div className="ct-icon">
+                      <i className={`fas ${t.icon}`} />
+                    </div>
+                    <div className="ct-label">{t.label}</div>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {cmd.textConfig.contentType === "text" ? (
+            {/* TEXT */}
+            {cmd.textConfig.contentType === "text" && (
               <div className="field">
                 <label>
                   <i className="fas fa-message" />
@@ -1660,30 +2103,25 @@ export default function CreateCommand() {
                 />
                 <div className="hint">
                   <i className="fas fa-info-circle" />
-                  ඔයාට ඕන message එක type කරන්න — emoji, line breaks support
+                  WhatsApp formatting support: <code>*bold*</code>{" "}
+                  <code>_italic_</code> <code>`mono`</code>
                 </div>
               </div>
-            ) : (
+            )}
+
+            {/* IMAGE */}
+            {cmd.textConfig.contentType === "image" && (
               <>
                 <div className="field">
                   <label>
-                    <i
-                      className={`fas ${
-                        cmd.textConfig.contentType === "audio"
-                          ? "fa-music"
-                          : "fa-video"
-                      }`}
-                    />
-                    {cmd.textConfig.contentType === "audio"
-                      ? "Audio URL"
-                      : "Video URL"}{" "}
-                    <span className="req">*</span>
+                    <i className="fas fa-image" />
+                    Image URL <span className="req">*</span>
                   </label>
                   <div className="input-icon-wrap">
                     <i className="fas fa-link" />
                     <input
                       className="input"
-                      placeholder="https://example.com/file.mp3"
+                      placeholder="https://example.com/image.jpg"
                       value={cmd.textConfig.contentValue}
                       onChange={(e) =>
                         updText({ contentValue: e.target.value })
@@ -1691,27 +2129,80 @@ export default function CreateCommand() {
                     />
                   </div>
                 </div>
+                <div className="field">
+                  <label>
+                    <i className="fas fa-align-left" />
+                    Caption (optional)
+                  </label>
+                  <textarea
+                    className="textarea"
+                    placeholder="Image එකට යටින් යන message එක..."
+                    value={cmd.textConfig.caption}
+                    onChange={(e) => updText({ caption: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+              </>
+            )}
 
-                {cmd.textConfig.contentType === "audio" && (
-                  <div className="field">
-                    <label>
-                      <i className="fas fa-file-audio" />
-                      File Name (optional)
-                    </label>
+            {/* AUDIO */}
+            {cmd.textConfig.contentType === "audio" && (
+              <div className="field">
+                <label>
+                  <i className="fas fa-music" />
+                  Audio URL <span className="req">*</span>
+                </label>
+                <div className="input-icon-wrap">
+                  <i className="fas fa-link" />
+                  <input
+                    className="input"
+                    placeholder="https://example.com/song.mp3"
+                    value={cmd.textConfig.contentValue}
+                    onChange={(e) =>
+                      updText({ contentValue: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="hint">
+                  <i className="fas fa-info-circle" />
+                  MP3 හෝ M4A URL එකක් දාන්න
+                </div>
+              </div>
+            )}
+
+            {/* VIDEO */}
+            {cmd.textConfig.contentType === "video" && (
+              <>
+                <div className="field">
+                  <label>
+                    <i className="fas fa-video" />
+                    Video URL <span className="req">*</span>
+                  </label>
+                  <div className="input-icon-wrap">
+                    <i className="fas fa-link" />
                     <input
                       className="input"
-                      placeholder="song.mp3"
-                      value={cmd.textConfig.fileName}
+                      placeholder="https://example.com/video.mp4"
+                      value={cmd.textConfig.contentValue}
                       onChange={(e) =>
-                        updText({ fileName: e.target.value })
+                        updText({ contentValue: e.target.value })
                       }
                     />
-                    <div className="hint">
-                      <i className="fas fa-info-circle" />
-                      WhatsApp එකේ පෙන්නන file name එක
-                    </div>
                   </div>
-                )}
+                </div>
+                <div className="field">
+                  <label>
+                    <i className="fas fa-align-left" />
+                    Caption (optional)
+                  </label>
+                  <textarea
+                    className="textarea"
+                    placeholder="Video එකට යටින් යන message එක..."
+                    value={cmd.textConfig.caption}
+                    onChange={(e) => updText({ caption: e.target.value })}
+                    rows={3}
+                  />
+                </div>
               </>
             )}
           </>
@@ -1729,41 +2220,54 @@ export default function CreateCommand() {
               </div>
             </div>
 
-            <div className="field-row">
-              <div className="field">
-                <label>
-                  <i className="fas fa-code-branch" />
-                  HTTP Method
-                </label>
-                <select
-                  className="select"
-                  value={cmd.apiConfig.method}
-                  onChange={(e) => updApi({ method: e.target.value })}
-                >
-                  <option value="GET">GET</option>
-                  <option value="POST">POST</option>
-                </select>
-              </div>
-              <div className="field">
-                <label>
-                  <i className="fas fa-question-circle" />
-                  Has Query?
-                </label>
-                <label
-                  className="checkbox-row"
-                  style={{ height: 46, padding: "0 16px" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={cmd.apiConfig.hasQuery}
-                    onChange={(e) =>
-                      updApi({ hasQuery: e.target.checked })
-                    }
-                  />
-                  <span className="label-text">
-                    {cmd.apiConfig.hasQuery ? "Yes — add params" : "No"}
-                  </span>
-                </label>
+            <div className="field">
+              <label>
+                <i className="fas fa-code-branch" />
+                HTTP Method
+              </label>
+              <select
+                className="select"
+                value={cmd.apiConfig.method}
+                onChange={(e) => updApi({ method: e.target.value })}
+              >
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+              </select>
+            </div>
+
+            <div className="field">
+              <label>
+                <i className="fas fa-sliders" />
+                Query Parameters
+              </label>
+              <div
+                className={`toggle-row ${
+                  cmd.apiConfig.hasQuery ? "on" : ""
+                }`}
+                onClick={() =>
+                  updApi({ hasQuery: !cmd.apiConfig.hasQuery })
+                }
+              >
+                <div className="toggle-info">
+                  <i className="fas fa-sliders" />
+                  <div>
+                    <div className="toggle-text">
+                      {cmd.apiConfig.hasQuery
+                        ? "Query parameters enabled"
+                        : "No query parameters"}
+                    </div>
+                    <div className="toggle-sub">
+                      {cmd.apiConfig.hasQuery
+                        ? "User input API එකට pass වෙනවා"
+                        : "Static API එකක්"}
+                    </div>
+                  </div>
+                </div>
+                <div
+                  className={`switch ${
+                    cmd.apiConfig.hasQuery ? "on" : ""
+                  }`}
+                />
               </div>
             </div>
 
@@ -1928,31 +2432,156 @@ export default function CreateCommand() {
                   <>
                     <div className="keys-label">
                       <i className="fas fa-key" />
-                      Available Fields — click to copy
+                      Available Fields — click to copy / expand
                     </div>
-                    <div className="keys-grid">
-                      {apiResult.templateKeys.map((t, i) => (
-                        <div
-                          key={i}
-                          className="key-item"
-                          onClick={() => {
-                            navigator.clipboard
-                              .writeText(`{{${t.key}}}`)
-                              .catch(() => {});
-                          }}
-                          title="Click to copy"
-                        >
-                          <div className="key-name">
-                            <i className="fas fa-copy" />
-                            {`{{${t.key}}}`}
+                    <div className="key-groups">
+                      {templateGroups.map((g, gi) => {
+                        const isArray = g.items.length > 1;
+                        const isExpanded = !!expandedKeys[g.base];
+                        return (
+                          <div
+                            key={gi}
+                            className={`key-group ${
+                              isExpanded ? "expanded" : ""
+                            }`}
+                          >
+                            <div
+                              className="key-group-header"
+                              onClick={() => {
+                                if (!isArray) {
+                                  navigator.clipboard
+                                    .writeText(`{{${g.base}}}`)
+                                    .catch(() => {});
+                                  return;
+                                }
+                                setExpandedKeys((prev) => ({
+                                  ...prev,
+                                  [g.base]: !prev[g.base],
+                                }));
+                              }}
+                            >
+                              <div className="key-group-icon">
+                                <i
+                                  className={`fas ${
+                                    isArray ? "fa-chevron-right" : "fa-copy"
+                                  }`}
+                                />
+                              </div>
+                              <div className="key-group-info">
+                                <div className="key-group-name">
+                                  {`{{${g.base}}}`}
+                                  {isArray && (
+                                    <span className="count">
+                                      {g.items.length}
+                                    </span>
+                                  )}
+                                </div>
+                                {isArray && !isExpanded && (
+                                  <div className="key-group-sample">
+                                    {g.items.length} variants — click to
+                                    expand
+                                  </div>
+                                )}
+                              </div>
+                              {!isArray && (
+                                <div className="key-group-actions">
+                                  <button
+                                    type="button"
+                                    className="key-group-insert"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      insertAtTemplate(g.base);
+                                    }}
+                                  >
+                                    <i className="fas fa-plus" />
+                                    Insert
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+
+                            {isArray && isExpanded && (
+                              <div className="key-group-children">
+                                {g.items.map((child, ci) => (
+                                  <div
+                                    key={ci}
+                                    className="key-child"
+                                    onClick={() => {
+                                      navigator.clipboard
+                                        .writeText(`{{${child}}}`)
+                                        .catch(() => {});
+                                      insertAtTemplate(child);
+                                    }}
+                                    title="Click to insert"
+                                  >
+                                    <div className="key-child-name">
+                                      <i className="fas fa-plus" />
+                                      {`{{${child}}}`}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                          <div className="sample">
-                            {String(t.sample).slice(0, 50)}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </>
+                )}
+
+                {/* API Image detect banner */}
+                {apiResult.ok && imageKeys.length > 0 && !cmd.sendWithImage && (
+                  <div className="api-image-banner">
+                    {(() => {
+                      const firstImageKey = imageKeys[0];
+                      const parts = String(firstImageKey).split(".");
+                      let cur = apiResult.data;
+                      for (const p of parts) {
+                        if (cur == null) break;
+                        if (Array.isArray(cur) && /^\d+$/.test(p)) {
+                          cur = cur[parseInt(p, 10)];
+                        } else {
+                          cur = cur[p];
+                        }
+                      }
+                      if (typeof cur !== "string") return null;
+                      return (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={cur}
+                            alt="API image"
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                            }}
+                          />
+                          <div className="api-image-banner-info">
+                            <div className="api-image-banner-title">
+                              <i className="fas fa-image" />
+                              API එකෙන් image එකක් හම්බුනා!
+                            </div>
+                            <div className="api-image-banner-url">
+                              {String(cur).slice(0, 80)}...
+                            </div>
+                            <button
+                              type="button"
+                              className="api-image-banner-btn"
+                              onClick={() => {
+                                upd({
+                                  sendWithImage: true,
+                                  imageUrlKey: firstImageKey,
+                                  imageUrl: "",
+                                });
+                              }}
+                            >
+                              <i className="fas fa-check" />
+                              Use This Image
+                            </button>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
                 )}
               </div>
             )}
@@ -1971,39 +2600,274 @@ export default function CreateCommand() {
                 <div className="chat-bubble user">
                   .{cmd.command || "(no name)"}
                 </div>
-                <div className="chat-bubble bot">
-                  {cmd.type === "simple"
-                    ? cmd.textConfig.contentType === "text"
-                      ? cmd.textConfig.contentValue || "(empty message)"
-                      : `[${cmd.textConfig.contentType}] ${
-                          cmd.textConfig.contentValue || "(no url)"
-                        }`
-                    : renderedPreview ||
-                      cmd.responseTemplate ||
-                      "🎬 *{{results.title}}*\n⭐ {{results.rating}} | {{results.year}}\n🔗 {{results.link}}"}
-                </div>
 
-                {/* 🔥 Image preview inside chat if enabled */}
-                {cmd.type === "API" &&
-                  cmd.sendWithImage &&
-                  resolvedImageUrl && (
+                {/* Bot reply bubble */}
+                {cmd.type === "simple" ? (
+                  cmd.textConfig.contentType === "image" ? (
                     <div className="chat-bubble bot" style={{ padding: 6 }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={resolvedImageUrl}
-                        alt="preview"
-                        style={{
-                          maxWidth: 200,
-                          maxHeight: 200,
-                          borderRadius: 12,
-                          display: "block",
-                        }}
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                        }}
-                      />
+                      <div className="chat-image-wrap">
+                        {cmd.textConfig.contentValue ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={cmd.textConfig.contentValue}
+                            alt="preview"
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                              e.target.parentElement.style.padding =
+                                "20px";
+                              e.target.parentElement.innerHTML =
+                                '<div style="color:rgba(255,255,255,0.4);text-align:center;font-size:0.8rem">❌ Image load failed</div>';
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              padding: 40,
+                              textAlign: "center",
+                              color: "rgba(255,255,255,0.3)",
+                              fontSize: "0.8rem",
+                            }}
+                          >
+                            No image URL
+                          </div>
+                        )}
+                        {cmd.textConfig.caption && (
+                          <div className="chat-image-caption">
+                            <span
+                              dangerouslySetInnerHTML={{
+                                __html: parseInlineFormat(
+                                  cmd.textConfig.caption
+                                ),
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
+                  ) : cmd.textConfig.contentType === "audio" ? (
+                    <div className="chat-bubble bot">
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "6px 4px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: "50%",
+                            background: "linear-gradient(135deg, #06b6d4, #3b82f6)",
+                            display: "grid",
+                            placeItems: "center",
+                            color: "#000",
+                            fontSize: "0.9rem",
+                          }}
+                        >
+                          <i className="fas fa-play" />
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontSize: "0.78rem",
+                              fontWeight: 700,
+                              color: "#fff",
+                            }}
+                          >
+                            🎵 Audio Message
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "0.65rem",
+                              color: "rgba(255,255,255,0.5)",
+                              wordBreak: "break-all",
+                              fontFamily: "monospace",
+                            }}
+                          >
+                            {cmd.textConfig.contentValue
+                              ? cmd.textConfig.contentValue.slice(0, 60) +
+                                "..."
+                              : "(no url)"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : cmd.textConfig.contentType === "video" ? (
+                    <div className="chat-bubble bot" style={{ padding: 6 }}>
+                      <div className="chat-image-wrap">
+                        <div
+                          style={{
+                            padding: 30,
+                            textAlign: "center",
+                            background: "rgba(0,0,0,0.5)",
+                          }}
+                        >
+                          <i
+                            className="fas fa-video"
+                            style={{ fontSize: "2rem", color: "#60a5fa" }}
+                          />
+                          <div
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "rgba(255,255,255,0.6)",
+                              marginTop: 8,
+                              fontFamily: "monospace",
+                              wordBreak: "break-all",
+                            }}
+                          >
+                            {cmd.textConfig.contentValue
+                              ? cmd.textConfig.contentValue.slice(0, 60)
+                              : "(no url)"}
+                          </div>
+                        </div>
+                        {cmd.textConfig.caption && (
+                          <div className="chat-image-caption">
+                            <span
+                              dangerouslySetInnerHTML={{
+                                __html: parseInlineFormat(
+                                  cmd.textConfig.caption
+                                ),
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    // Text
+                    <div className="chat-bubble bot">
+                      {renderWhatsAppPreview(
+                        cmd.textConfig.contentValue || "(empty message)"
+                      ).map((el) => {
+                        if (el.type === "empty")
+                          return (
+                            <span key={el.key} className="line-empty" />
+                          );
+                        if (el.type === "quote")
+                          return (
+                            <span key={el.key} className="line-quote">
+                              {el.content}
+                            </span>
+                          );
+                        if (el.type === "mono")
+                          return (
+                            <span key={el.key} className="line-mono">
+                              {el.content}
+                            </span>
+                          );
+                        return (
+                          <span
+                            key={el.key}
+                            dangerouslySetInnerHTML={{
+                              __html: el.content,
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                  )
+                ) : (
+                  // API response
+                  <>
+                    {cmd.sendWithImage && resolvedImageUrl ? (
+                      <div className="chat-bubble bot" style={{ padding: 6 }}>
+                        <div className="chat-image-wrap">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={resolvedImageUrl}
+                            alt="preview"
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                            }}
+                          />
+                          {renderedPreview && (
+                            <div className="chat-image-caption">
+                              {renderWhatsAppPreview(renderedPreview).map(
+                                (el) => {
+                                  if (el.type === "empty")
+                                    return (
+                                      <span
+                                        key={el.key}
+                                        className="line-empty"
+                                      />
+                                    );
+                                  if (el.type === "quote")
+                                    return (
+                                      <span
+                                        key={el.key}
+                                        className="line-quote"
+                                      >
+                                        {el.content}
+                                      </span>
+                                    );
+                                  if (el.type === "mono")
+                                    return (
+                                      <span
+                                        key={el.key}
+                                        className="line-mono"
+                                      >
+                                        {el.content}
+                                      </span>
+                                    );
+                                  return (
+                                    <span
+                                      key={el.key}
+                                      dangerouslySetInnerHTML={{
+                                        __html: el.content,
+                                      }}
+                                    />
+                                  );
+                                }
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="chat-bubble bot">
+                        {renderedPreview ? (
+                          renderWhatsAppPreview(renderedPreview).map((el) => {
+                            if (el.type === "empty")
+                              return (
+                                <span key={el.key} className="line-empty" />
+                              );
+                            if (el.type === "quote")
+                              return (
+                                <span key={el.key} className="line-quote">
+                                  {el.content}
+                                </span>
+                              );
+                            if (el.type === "mono")
+                              return (
+                                <span key={el.key} className="line-mono">
+                                  {el.content}
+                                </span>
+                              );
+                            return (
+                              <span
+                                key={el.key}
+                                dangerouslySetInnerHTML={{
+                                  __html: el.content,
+                                }}
+                              />
+                            );
+                          })
+                        ) : (
+                          <span
+                            dangerouslySetInnerHTML={{
+                              __html: parseInlineFormat(
+                                cmd.responseTemplate ||
+                                  "🎬 *{{results.title}}*\n⭐ {{results.rating}} | {{results.year}}"
+                              ),
+                            }}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
 
                 {cmd.type === "API" && (
                   <div
@@ -2049,7 +2913,6 @@ export default function CreateCommand() {
                     rows={6}
                   />
 
-                  {/* Syntax errors */}
                   {templateValidation.errors.length > 0 && (
                     <div className="syntax-errors">
                       {templateValidation.errors.map((e, i) => (
@@ -2066,7 +2929,6 @@ export default function CreateCommand() {
                     </div>
                   )}
 
-                  {/* Warnings */}
                   {templateValidation.errors.length === 0 &&
                     templateValidation.warnings.length > 0 && (
                       <div className="syntax-warnings">
@@ -2084,7 +2946,6 @@ export default function CreateCommand() {
                       </div>
                     )}
 
-                  {/* Success */}
                   {templateValidation.errors.length === 0 &&
                     templateValidation.warnings.length === 0 &&
                     cmd.responseTemplate && (
@@ -2101,61 +2962,38 @@ export default function CreateCommand() {
                   </div>
                 </div>
 
-                {cmd.apiConfig.extractedValues?.length > 0 && (
-                  <div className="field">
-                    <label>
-                      <i className="fas fa-key" />
-                      Available Values — click to insert
-                    </label>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: 6,
-                      }}
-                    >
-                      {cmd.apiConfig.extractedValues.map((k, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          className="array-badge"
-                          style={{
-                            cursor: "pointer",
-                            fontFamily: "inherit",
-                          }}
-                          onClick={() => insertAtTemplate(k)}
-                          title="Click to insert into template"
-                        >
-                          <i className="fas fa-plus" />
-                          {`{{${k}}}`}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* ==================== SEND WITH IMAGE ==================== */}
                 <div className="field">
-                  <label className="checkbox-row">
-                    <input
-                      type="checkbox"
-                      checked={cmd.sendWithImage}
-                      onChange={(e) =>
-                        upd({ sendWithImage: e.target.checked })
-                      }
+                  <div
+                    className={`toggle-row ${
+                      cmd.sendWithImage ? "on" : ""
+                    }`}
+                    onClick={() =>
+                      upd({ sendWithImage: !cmd.sendWithImage })
+                    }
+                  >
+                    <div className="toggle-info">
+                      <i className="fas fa-image" />
+                      <div>
+                        <div className="toggle-text">
+                          Send with Image
+                        </div>
+                        <div className="toggle-sub">
+                          {cmd.sendWithImage
+                            ? "Image + caption එකට යවනවා"
+                            : "Text only"}
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      className={`switch ${
+                        cmd.sendWithImage ? "on" : ""
+                      }`}
                     />
-                    <span className="label-text">
-                      <i
-                        className="fas fa-image"
-                        style={{ color: "#22d3ee", marginRight: 8 }}
-                      />
-                      Send with Image — message එකට image එකක් එකතු කරන්න
-                    </span>
-                  </label>
+                  </div>
 
                   {cmd.sendWithImage && (
                     <div className="image-config">
-                      {/* Mode toggle */}
                       <div className="image-mode">
                         <button
                           type="button"
@@ -2187,7 +3025,6 @@ export default function CreateCommand() {
                         </button>
                       </div>
 
-                      {/* Static URL input */}
                       {!cmd.imageUrlKey && (
                         <div className="field" style={{ marginBottom: 10 }}>
                           <label
@@ -2209,14 +3046,9 @@ export default function CreateCommand() {
                               }
                             />
                           </div>
-                          <div className="image-key-hint">
-                            <i className="fas fa-info-circle" />
-                            Public image URL එකක් දාන්න (jpg, png, webp)
-                          </div>
                         </div>
                       )}
 
-                      {/* From API */}
                       {cmd.imageUrlKey !== "" && (
                         <div className="field" style={{ marginBottom: 10 }}>
                           <label
@@ -2247,7 +3079,6 @@ export default function CreateCommand() {
                             </button>
                           </div>
 
-                          {/* Suggested image keys from API */}
                           {imageKeys.length > 0 && (
                             <>
                               <div className="image-key-hint">
@@ -2274,44 +3105,9 @@ export default function CreateCommand() {
                               </div>
                             </>
                           )}
-
-                          {/* All keys fallback */}
-                          {imageKeys.length === 0 &&
-                            cmd.apiConfig.extractedValues?.length > 0 && (
-                              <>
-                                <div className="image-key-hint">
-                                  <i className="fas fa-info-circle" />
-                                  API test එකේ fields — image-like key එකක්
-                                  click කරන්න
-                                </div>
-                                <div className="image-keys-wrap">
-                                  {cmd.apiConfig.extractedValues
-                                    .slice(0, 8)
-                                    .map((k, i) => (
-                                      <button
-                                        key={i}
-                                        type="button"
-                                        className={`image-key-btn ${
-                                          cmd.imageUrlKey === k
-                                            ? "selected"
-                                            : ""
-                                        }`}
-                                        onClick={() =>
-                                          upd({ imageUrlKey: k })
-                                        }
-                                        title={k}
-                                      >
-                                        <i className="fas fa-key" />
-                                        {k}
-                                      </button>
-                                    ))}
-                                </div>
-                              </>
-                            )}
                         </div>
                       )}
 
-                      {/* Live preview */}
                       {cmd.sendWithImage && (
                         <div className="image-preview">
                           <div className="image-preview-label">
@@ -2338,9 +3134,6 @@ export default function CreateCommand() {
                                 </div>
                                 <div className="image-preview-url">
                                   {String(resolvedImageUrl).slice(0, 100)}
-                                  {String(resolvedImageUrl).length > 100
-                                    ? "..."
-                                    : ""}
                                 </div>
                               </div>
                             </div>
@@ -2348,15 +3141,10 @@ export default function CreateCommand() {
                             <div className="image-preview-status warn">
                               <i className="fas fa-triangle-exclamation" />
                               {cmd.imageUrlKey
-                                ? "Key හම්බුනේ නෑ — API test කරන්න (Step 2)"
+                                ? "Key හම්බුනේ නෑ — API test කරන්න"
                                 : "Image URL එකක් දාන්න"}
                             </div>
                           )}
-
-                          <div className="image-preview-hint">
-                            <i className="fas fa-info-circle" />
-                            Image එක message එකට attach වෙලා යවයි
-                          </div>
                         </div>
                       )}
                     </div>
