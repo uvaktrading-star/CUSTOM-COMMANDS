@@ -35,8 +35,9 @@ function validateCommand(body) {
 
   if (body?.type === "simple") {
     const ct = body?.textConfig?.contentType;
-    if (!["text", "audio", "video"].includes(ct)) {
-      errors.push("textConfig.contentType must be text/audio/video");
+    // 🔥 "image" add කළා
+    if (!["text", "image", "audio", "video"].includes(ct)) {
+      errors.push("textConfig.contentType must be text/image/audio/video");
     }
     if (!body?.textConfig?.contentValue) {
       errors.push("textConfig.contentValue is required");
@@ -101,9 +102,11 @@ function normalizePayload(body, userId) {
   };
 
   if (body.type === "simple") {
+    // 🔥 textConfig — caption field add කළා
     base.textConfig = {
       contentType: body.textConfig?.contentType || "text",
       contentValue: body.textConfig?.contentValue || "",
+      caption: body.textConfig?.caption || "",
       fileName: body.textConfig?.fileName || "",
     };
     base.apiConfig = {
@@ -119,9 +122,11 @@ function normalizePayload(body, userId) {
     base.imageUrl = "";
     base.imageUrlKey = "";
   } else {
+    // 🔥 textConfig — caption field add කළා
     base.textConfig = {
       contentType: "text",
       contentValue: "",
+      caption: "",
       fileName: "",
     };
     base.apiConfig = {
@@ -167,7 +172,6 @@ export async function GET(req) {
 
     await connectDB();
 
-    // 🔥 { _id: userId } → { userId }
     const commands = await Command.find({ userId })
       .sort({ createdAt: -1 })
       .lean();
@@ -226,7 +230,6 @@ export async function POST(req) {
     const payload = normalizePayload(body, userId);
 
     /* ---------- check if update or create ---------- */
-    // 🔥 { _id: userId, ... } → { userId, ... }
     const existing = await Command.findOne({
       userId,
       command: payload.command,
@@ -248,7 +251,6 @@ export async function POST(req) {
     }
 
     /* ---------- CREATE — 1. Max limit check ---------- */
-    // 🔥 { _id: userId } → { userId }
     const existingCount = await Command.countDocuments({ userId });
     if (existingCount >= MAX_COMMANDS) {
       return NextResponse.json(
@@ -263,7 +265,6 @@ export async function POST(req) {
     /* ---------- CREATE — 2. Alias conflict check ---------- */
     const aliases = payload.aliase || [];
     if (aliases.length > 0) {
-      // 🔥 { _id: userId, ... } → { userId, ... }
       const aliasConflict = await Command.findOne({
         userId,
         $or: [
@@ -352,7 +353,6 @@ export async function DELETE(req) {
 
     await connectDB();
 
-    // 🔥 { _id: userId } → { userId }
     const deleted = await Command.findOneAndDelete({
       userId,
       command,
