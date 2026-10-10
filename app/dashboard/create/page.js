@@ -9,6 +9,8 @@ const STEPS = [
   { n: 3, label: "Test", icon: "fa-vial" },
 ];
 
+const MAX_COMMANDS = 5;
+
 function defaultCommand() {
   return {
     command: "",
@@ -29,6 +31,12 @@ function defaultCommand() {
       extractedValues: [],
     },
     responseTemplate: "",
+
+    // 🔥 NEW: Image
+    sendWithImage: false,
+    imageUrl: "",
+    imageUrlKey: "",
+
     isActive: true,
   };
 }
@@ -45,6 +53,7 @@ export default function CreateCommand() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [loadingExisting, setLoadingExisting] = useState(!!editName);
+  const [existingCommands, setExistingCommands] = useState([]);
 
   useEffect(() => {
     if (!editName) return;
@@ -82,6 +91,23 @@ export default function CreateCommand() {
     })();
   }, [editName]);
 
+  /* ---------- Load existing commands ---------- */
+  useEffect(() => {
+    (async () => {
+      try {
+        const userId = localStorage.getItem("bot_id");
+        if (!userId) return;
+        const res = await fetch("/api/add-cmd", {
+          headers: { Authorization: `Bearer ${userId}` },
+        });
+        const data = await res.json();
+        if (data.ok) setExistingCommands(data.commands || []);
+      } catch {
+        // silent
+      }
+    })();
+  }, []);
+
   const upd = (patch) => setCmd((p) => ({ ...p, ...patch }));
   const updText = (patch) =>
     setCmd((p) => ({ ...p, textConfig: { ...p.textConfig, ...patch } }));
@@ -114,8 +140,51 @@ export default function CreateCommand() {
     }
   }
 
+  /* ---------- Pre-submit validation ---------- */
+  function validateBeforeSubmit() {
+    const name = cmd.command.trim().toLowerCase();
+
+    if (!name) return "Command name එක අනිවාර්යයි";
+
+    const duplicate = existingCommands.find(
+      (c) => c.command === name && c.command !== editName
+    );
+    if (duplicate) {
+      return `".${name}" කියන command එක දැනටමත් තියෙනවා. වෙන නමක් use කරන්න.`;
+    }
+
+    if (!editName && existingCommands.length >= MAX_COMMANDS) {
+      return `ඔයාට උපරිම commands ${MAX_COMMANDS}ක් විතරයි හදන්න පුළුවන්. දැනටමත් ${existingCommands.length}ක් තියෙනවා.`;
+    }
+
+    const aliases = cmd.aliase
+      .split(",")
+      .map((a) => a.trim().toLowerCase())
+      .filter(Boolean);
+
+    for (const a of aliases) {
+      const conflict = existingCommands.find(
+        (c) =>
+          c.command !== editName &&
+          (c.command === a || (c.aliase || []).includes(a))
+      );
+      if (conflict) {
+        return `Alias ".${a}" එක දැනටමත් ".${conflict.command}" command එකට අයිතියි.`;
+      }
+    }
+
+    return null;
+  }
+
   async function submit() {
     setError("");
+
+    const validationError = validateBeforeSubmit();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setSaving(true);
     try {
       const userId = localStorage.getItem("bot_id");
@@ -142,6 +211,11 @@ export default function CreateCommand() {
           extractedValues: cmd.apiConfig.extractedValues,
         };
         payload.responseTemplate = cmd.responseTemplate;
+
+        // 🔥 Image config
+        payload.sendWithImage = !!cmd.sendWithImage;
+        payload.imageUrl = cmd.imageUrl || "";
+        payload.imageUrlKey = cmd.imageUrlKey || "";
       }
 
       const res = await fetch("/api/add-cmd", {
@@ -282,6 +356,36 @@ export default function CreateCommand() {
       : "";
 
   const hasApiTest = !!(apiResult && apiResult.ok);
+
+  // 🔥 Resolve image URL for preview
+  const resolvedImageUrl = (() => {
+    if (!cmd.sendWithImage) return "";
+
+    // From API key
+    if (cmd.imageUrlKey && apiResult?.ok) {
+      const parts = String(cmd.imageUrlKey).split(".");
+      let cur = apiResult.data;
+      for (const p of parts) {
+        if (cur == null) return "";
+        if (Array.isArray(cur) && /^\d+$/.test(p)) {
+          cur = cur[parseInt(p, 10)];
+        } else {
+          cur = cur[p];
+        }
+      }
+      if (cur && typeof cur === "string") return cur;
+    }
+
+    // Static URL fallback
+    if (cmd.imageUrl) return cmd.imageUrl;
+
+    return "";
+  })();
+
+  // 🔥 Image-like keys filter
+  const imageKeys = (cmd.apiConfig.extractedValues || []).filter((k) =>
+    /image|img|photo|poster|thumbnail|picture|cover|icon|banner|thumb/i.test(k)
+  );
 
   if (loadingExisting) {
     return (
@@ -1152,6 +1256,187 @@ export default function CreateCommand() {
           color: rgba(255, 255, 255, 0.4);
           border: 1px solid rgba(255, 255, 255, 0.08);
         }
+
+        /* ==================== IMAGE SECTION ==================== */
+        .image-config {
+          padding: 18px;
+          border-radius: 14px;
+          background: rgba(6, 182, 212, 0.05);
+          border: 1px dashed rgba(6, 182, 212, 0.3);
+          margin-top: 6px;
+          animation: slideDown 0.25s ease;
+        }
+
+        .image-mode {
+          display: flex;
+          gap: 6px;
+          margin-bottom: 14px;
+          padding: 4px;
+          border-radius: 30px;
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .image-mode-btn {
+          flex: 1;
+          padding: 9px 14px;
+          border-radius: 30px;
+          border: none;
+          background: transparent;
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 0.78rem;
+          font-weight: 700;
+          font-family: inherit;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+        }
+        .image-mode-btn:hover { color: #fff; }
+        .image-mode-btn.active {
+          background: linear-gradient(135deg, #06b6d4, #3b82f6);
+          color: #000;
+          box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+        }
+
+        .image-key-input { position: relative; }
+        .image-key-input .input { padding-right: 44px; }
+        .image-key-input .clear-btn {
+          position: absolute;
+          right: 10px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 28px;
+          height: 28px;
+          border-radius: 8px;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          color: #f87171;
+          cursor: pointer;
+          display: grid;
+          place-items: center;
+          font-size: 0.75rem;
+          transition: all 0.2s ease;
+        }
+        .image-key-input .clear-btn:hover {
+          background: rgba(239, 68, 68, 0.2);
+        }
+
+        .image-key-hint {
+          font-size: 0.7rem;
+          color: rgba(255, 255, 255, 0.4);
+          margin-top: 8px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .image-key-hint i { color: #22d3ee; font-size: 0.65rem; }
+
+        .image-keys-wrap {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin-top: 10px;
+        }
+        .image-key-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 5px 10px;
+          border-radius: 20px;
+          background: rgba(6, 182, 212, 0.08);
+          border: 1px solid rgba(6, 182, 212, 0.25);
+          color: #22d3ee;
+          font-size: 0.68rem;
+          font-weight: 600;
+          font-family: "SF Mono", "Consolas", monospace;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .image-key-btn:hover {
+          background: rgba(6, 182, 212, 0.18);
+          transform: translateY(-1px);
+        }
+        .image-key-btn.selected {
+          background: linear-gradient(135deg, #06b6d4, #3b82f6);
+          color: #000;
+          border-color: transparent;
+        }
+        .image-key-btn i { font-size: 0.6rem; }
+
+        .image-preview {
+          margin-top: 14px;
+          padding: 12px;
+          border-radius: 12px;
+          background: rgba(0, 0, 0, 0.35);
+          border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+        .image-preview-label {
+          font-size: 0.62rem;
+          color: rgba(255, 255, 255, 0.45);
+          text-transform: uppercase;
+          letter-spacing: 1.2px;
+          font-weight: 700;
+          margin-bottom: 10px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .image-preview-label i { color: #22d3ee; }
+        .image-preview-body {
+          display: flex;
+          gap: 14px;
+          align-items: center;
+        }
+        .image-preview-thumb {
+          width: 80px;
+          height: 80px;
+          object-fit: cover;
+          border-radius: 12px;
+          border: 2px solid rgba(6, 182, 212, 0.3);
+          background: rgba(0, 0, 0, 0.5);
+          flex-shrink: 0;
+        }
+        .image-preview-info {
+          min-width: 0;
+          flex: 1;
+        }
+        .image-preview-status {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 0.7rem;
+          font-weight: 700;
+          padding: 3px 10px;
+          border-radius: 20px;
+          margin-bottom: 6px;
+        }
+        .image-preview-status.ok {
+          background: rgba(34, 197, 94, 0.15);
+          color: #4ade80;
+          border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        .image-preview-status.warn {
+          background: rgba(234, 179, 8, 0.15);
+          color: #facc15;
+          border: 1px solid rgba(234, 179, 8, 0.3);
+        }
+        .image-preview-url {
+          font-size: 0.68rem;
+          color: rgba(255, 255, 255, 0.5);
+          font-family: "SF Mono", "Consolas", monospace;
+          word-break: break-all;
+          line-height: 1.5;
+        }
+        .image-preview-hint {
+          font-size: 0.68rem;
+          color: rgba(255, 255, 255, 0.35);
+          margin-top: 8px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
       `}</style>
 
       {/* ==================== HEADER ==================== */}
@@ -1173,7 +1458,7 @@ export default function CreateCommand() {
         <p className="wiz-sub">
           {editName
             ? `Editing: .${editName}`
-            : "Set up a new command for your WhatsApp bot"}
+            : `Set up a new command — ${existingCommands.length}/${MAX_COMMANDS} used`}
         </p>
       </div>
 
@@ -1698,6 +1983,28 @@ export default function CreateCommand() {
                       "🎬 *{{results.title}}*\n⭐ {{results.rating}} | {{results.year}}\n🔗 {{results.link}}"}
                 </div>
 
+                {/* 🔥 Image preview inside chat if enabled */}
+                {cmd.type === "API" &&
+                  cmd.sendWithImage &&
+                  resolvedImageUrl && (
+                    <div className="chat-bubble bot" style={{ padding: 6 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={resolvedImageUrl}
+                        alt="preview"
+                        style={{
+                          maxWidth: 200,
+                          maxHeight: 200,
+                          borderRadius: 12,
+                          display: "block",
+                        }}
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                    </div>
+                  )}
+
                 {cmd.type === "API" && (
                   <div
                     className={`preview-badge ${
@@ -1826,6 +2133,235 @@ export default function CreateCommand() {
                     </div>
                   </div>
                 )}
+
+                {/* ==================== SEND WITH IMAGE ==================== */}
+                <div className="field">
+                  <label className="checkbox-row">
+                    <input
+                      type="checkbox"
+                      checked={cmd.sendWithImage}
+                      onChange={(e) =>
+                        upd({ sendWithImage: e.target.checked })
+                      }
+                    />
+                    <span className="label-text">
+                      <i
+                        className="fas fa-image"
+                        style={{ color: "#22d3ee", marginRight: 8 }}
+                      />
+                      Send with Image — message එකට image එකක් එකතු කරන්න
+                    </span>
+                  </label>
+
+                  {cmd.sendWithImage && (
+                    <div className="image-config">
+                      {/* Mode toggle */}
+                      <div className="image-mode">
+                        <button
+                          type="button"
+                          className={`image-mode-btn ${
+                            !cmd.imageUrlKey ? "active" : ""
+                          }`}
+                          onClick={() =>
+                            upd({ imageUrlKey: "", imageUrl: cmd.imageUrl })
+                          }
+                        >
+                          <i className="fas fa-link" />
+                          Static URL
+                        </button>
+                        <button
+                          type="button"
+                          className={`image-mode-btn ${
+                            cmd.imageUrlKey ? "active" : ""
+                          }`}
+                          onClick={() => {
+                            const first =
+                              imageKeys[0] ||
+                              cmd.apiConfig.extractedValues?.[0] ||
+                              "";
+                            upd({ imageUrlKey: first, imageUrl: "" });
+                          }}
+                        >
+                          <i className="fas fa-code" />
+                          From API Response
+                        </button>
+                      </div>
+
+                      {/* Static URL input */}
+                      {!cmd.imageUrlKey && (
+                        <div className="field" style={{ marginBottom: 10 }}>
+                          <label
+                            style={{
+                              fontSize: "0.7rem",
+                              color: "rgba(255,255,255,0.5)",
+                            }}
+                          >
+                            <i className="fas fa-image" /> Image URL
+                          </label>
+                          <div className="input-icon-wrap">
+                            <i className="fas fa-link" />
+                            <input
+                              className="input"
+                              placeholder="https://example.com/image.jpg"
+                              value={cmd.imageUrl}
+                              onChange={(e) =>
+                                upd({ imageUrl: e.target.value })
+                              }
+                            />
+                          </div>
+                          <div className="image-key-hint">
+                            <i className="fas fa-info-circle" />
+                            Public image URL එකක් දාන්න (jpg, png, webp)
+                          </div>
+                        </div>
+                      )}
+
+                      {/* From API */}
+                      {cmd.imageUrlKey !== "" && (
+                        <div className="field" style={{ marginBottom: 10 }}>
+                          <label
+                            style={{
+                              fontSize: "0.7rem",
+                              color: "rgba(255,255,255,0.5)",
+                            }}
+                          >
+                            <i className="fas fa-code" /> Image URL Key (from
+                            API)
+                          </label>
+                          <div className="image-key-input">
+                            <input
+                              className="input"
+                              placeholder="e.g. results.0.image"
+                              value={cmd.imageUrlKey}
+                              onChange={(e) =>
+                                upd({ imageUrlKey: e.target.value })
+                              }
+                            />
+                            <button
+                              type="button"
+                              className="clear-btn"
+                              onClick={() => upd({ imageUrlKey: "" })}
+                              title="Clear"
+                            >
+                              <i className="fas fa-times" />
+                            </button>
+                          </div>
+
+                          {/* Suggested image keys from API */}
+                          {imageKeys.length > 0 && (
+                            <>
+                              <div className="image-key-hint">
+                                <i className="fas fa-magic" />
+                                Suggested image keys — click to select
+                              </div>
+                              <div className="image-keys-wrap">
+                                {imageKeys.slice(0, 8).map((k, i) => (
+                                  <button
+                                    key={i}
+                                    type="button"
+                                    className={`image-key-btn ${
+                                      cmd.imageUrlKey === k
+                                        ? "selected"
+                                        : ""
+                                    }`}
+                                    onClick={() => upd({ imageUrlKey: k })}
+                                    title={k}
+                                  >
+                                    <i className="fas fa-image" />
+                                    {k}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          )}
+
+                          {/* All keys fallback */}
+                          {imageKeys.length === 0 &&
+                            cmd.apiConfig.extractedValues?.length > 0 && (
+                              <>
+                                <div className="image-key-hint">
+                                  <i className="fas fa-info-circle" />
+                                  API test එකේ fields — image-like key එකක්
+                                  click කරන්න
+                                </div>
+                                <div className="image-keys-wrap">
+                                  {cmd.apiConfig.extractedValues
+                                    .slice(0, 8)
+                                    .map((k, i) => (
+                                      <button
+                                        key={i}
+                                        type="button"
+                                        className={`image-key-btn ${
+                                          cmd.imageUrlKey === k
+                                            ? "selected"
+                                            : ""
+                                        }`}
+                                        onClick={() =>
+                                          upd({ imageUrlKey: k })
+                                        }
+                                        title={k}
+                                      >
+                                        <i className="fas fa-key" />
+                                        {k}
+                                      </button>
+                                    ))}
+                                </div>
+                              </>
+                            )}
+                        </div>
+                      )}
+
+                      {/* Live preview */}
+                      {cmd.sendWithImage && (
+                        <div className="image-preview">
+                          <div className="image-preview-label">
+                            <i className="fas fa-eye" /> Image Preview
+                          </div>
+
+                          {resolvedImageUrl ? (
+                            <div className="image-preview-body">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={resolvedImageUrl}
+                                alt="preview"
+                                className="image-preview-thumb"
+                                onError={(e) => {
+                                  e.target.style.borderColor =
+                                    "rgba(239, 68, 68, 0.5)";
+                                  e.target.style.opacity = 0.5;
+                                }}
+                              />
+                              <div className="image-preview-info">
+                                <div className="image-preview-status ok">
+                                  <i className="fas fa-circle-check" />
+                                  Ready to send
+                                </div>
+                                <div className="image-preview-url">
+                                  {String(resolvedImageUrl).slice(0, 100)}
+                                  {String(resolvedImageUrl).length > 100
+                                    ? "..."
+                                    : ""}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="image-preview-status warn">
+                              <i className="fas fa-triangle-exclamation" />
+                              {cmd.imageUrlKey
+                                ? "Key හම්බුනේ නෑ — API test කරන්න (Step 2)"
+                                : "Image URL එකක් දාන්න"}
+                            </div>
+                          )}
+
+                          <div className="image-preview-hint">
+                            <i className="fas fa-info-circle" />
+                            Image එක message එකට attach වෙලා යවයි
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </>
             )}
 
