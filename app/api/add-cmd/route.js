@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { connectDB, Command } from "@/lib/db";
 
+const MAX_COMMANDS = 5;
+
 /* ======================================================
    Auth helper — login API එකෙන් එවන token/number එක verify
    ====================================================== */
@@ -59,6 +61,17 @@ function validateCommand(body) {
     if (!body?.responseTemplate) {
       errors.push("responseTemplate is required for API commands");
     }
+
+    // 🔥 Image validation
+    if (body?.sendWithImage) {
+      const hasKey = !!(body?.imageUrlKey && body.imageUrlKey.trim());
+      const hasUrl = !!(body?.imageUrl && body.imageUrl.trim());
+      if (!hasKey && !hasUrl) {
+        errors.push(
+          "sendWithImage is on — imageUrl හෝ imageUrlKey එකක් අවශ්‍යයි"
+        );
+      }
+    }
   }
 
   return errors;
@@ -103,6 +116,11 @@ function normalizePayload(body, userId) {
       extractedValues: [],
     };
     base.responseTemplate = "";
+
+    // 🔥 Reset image fields for simple
+    base.sendWithImage = false;
+    base.imageUrl = "";
+    base.imageUrlKey = "";
   } else {
     base.textConfig = {
       contentType: "text",
@@ -126,6 +144,13 @@ function normalizePayload(body, userId) {
         : [],
     };
     base.responseTemplate = body.responseTemplate || "";
+
+    // 🔥 NEW: Image fields
+    base.sendWithImage = !!body.sendWithImage;
+    base.imageUrl = body.imageUrl ? String(body.imageUrl).trim() : "";
+    base.imageUrlKey = body.imageUrlKey
+      ? String(body.imageUrlKey).trim()
+      : "";
   }
 
   return base;
@@ -154,6 +179,7 @@ export async function GET(req) {
       ok: true,
       userId,
       count: commands.length,
+      maxCommands: MAX_COMMANDS,
       commands,
     });
   } catch (err) {
@@ -167,7 +193,6 @@ export async function GET(req) {
 
 /* ======================================================
    POST — create or update a command
-   body: { command, aliase, desc, react, type, ... }
    ====================================================== */
 export async function POST(req) {
   try {
@@ -203,14 +228,14 @@ export async function POST(req) {
     /* ---------- normalize ---------- */
     const payload = normalizePayload(body, userId);
 
-    /* ---------- check duplicate ---------- */
+    /* ---------- check if update or create ---------- */
     const existing = await Command.findOne({
       _id: userId,
       command: payload.command,
     });
 
     if (existing) {
-      // update existing
+      /* ---------- UPDATE ---------- */
       Object.assign(existing, payload);
       await existing.save();
 
@@ -221,7 +246,41 @@ export async function POST(req) {
       });
     }
 
-    /* ---------- create ---------- */
+    /* ---------- CREATE — 1. Max limit check ---------- */
+    const existingCount = await Command.countDocuments({ _id: userId });
+    if (existingCount >= MAX_COMMANDS) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `ඔයාට උපරිම commands ${MAX_COMMANDS}ක් විතරයි හදන්න පුළුවන්. දැනටමත් ${existingCount}ක් තියෙනවා.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    /* ---------- CREATE — 2. Alias conflict check ---------- */
+    const aliases = payload.aliase || [];
+    if (aliases.length > 0) {
+      const aliasConflict = await Command.findOne({
+        _id: userId,
+        $or: [
+          { command: { $in: aliases } },
+          { aliase: { $in: aliases } },
+        ],
+      });
+
+      if (aliasConflict) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: `Alias conflict — ".${aliasConflict.command}" command එකට අයිතියි`,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    /* ---------- CREATE — 3. Create ---------- */
     const created = await Command.create(payload);
 
     return NextResponse.json({
