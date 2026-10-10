@@ -11,6 +11,7 @@ export default function DashboardHome() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [toggling, setToggling] = useState(null);
 
   useEffect(() => {
     loadCommands();
@@ -34,9 +35,45 @@ export default function DashboardHome() {
     }
   }
 
+  /* ---------- toggle active state ---------- */
+  async function toggleActive(cmd) {
+    setToggling(cmd.command);
+    try {
+      const userId = localStorage.getItem("bot_id");
+      const res = await fetch("/api/add-cmd", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userId}`,
+        },
+        body: JSON.stringify({
+          command: cmd.command,
+          aliase: cmd.aliase || [],
+          desc: cmd.desc || "",
+          react: cmd.react || "",
+          type: cmd.type,
+          textConfig: cmd.textConfig,
+          apiConfig: cmd.apiConfig,
+          responseTemplate: cmd.responseTemplate,
+          isActive: !cmd.isActive,
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Failed to update");
+      setCommands((prev) =>
+        prev.map((c) =>
+          c.command === cmd.command ? { ...c, isActive: !c.isActive } : c
+        )
+      );
+    } catch (err) {
+      alert("❌ " + err.message);
+    } finally {
+      setToggling(null);
+    }
+  }
+
   /* ---------- filters ---------- */
   const filtered = commands.filter((c) => {
-    if (filter !== "all" && c.type !== filter) return false;
     if (search) {
       const q = search.toLowerCase();
       return (
@@ -48,6 +85,8 @@ export default function DashboardHome() {
     return true;
   });
 
+  const activeCount = commands.filter((c) => c.isActive).length;
+
   return (
     <>
       <style jsx>{`
@@ -55,68 +94,76 @@ export default function DashboardHome() {
         .page-head {
           display: flex;
           justify-content: space-between;
-          align-items: flex-start;
-          gap: 16px;
+          align-items: center;
+          gap: 20px;
           margin-bottom: 32px;
           flex-wrap: wrap;
         }
 
-        .page-head-left h1 {
-          font-size: 2rem;
-          font-weight: 900;
-          letter-spacing: -0.8px;
-          line-height: 1.1;
+        .page-head-left {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 16px;
+          min-width: 0;
         }
-        .page-head-left h1 .title-icon {
-          width: 44px;
-          height: 44px;
-          border-radius: 14px;
+
+        .title-icon {
+          width: 52px;
+          height: 52px;
+          border-radius: 16px;
           background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(6, 182, 212, 0.15));
           border: 1px solid rgba(59, 130, 246, 0.3);
           display: grid;
           place-items: center;
           color: #60a5fa;
-          font-size: 1.1rem;
+          font-size: 1.3rem;
           box-shadow: 0 0 30px rgba(59, 130, 246, 0.15);
+          flex-shrink: 0;
         }
-        .page-head-left h1 .blue {
+
+        .page-title-block h1 {
+          font-size: 1.8rem;
+          font-weight: 900;
+          letter-spacing: -0.8px;
+          line-height: 1.1;
+          margin-bottom: 4px;
+        }
+        .page-title-block h1 .blue {
           background: linear-gradient(135deg, #3b82f6, #06b6d4);
           -webkit-background-clip: text;
           background-clip: text;
           color: transparent;
         }
-        .page-head-left p {
+        .page-title-block p {
           color: rgba(255, 255, 255, 0.4);
-          font-size: 0.85rem;
-          margin-top: 8px;
-          margin-left: 56px;
+          font-size: 0.82rem;
         }
 
         /* ==================== CREATE BUTTON ==================== */
         .create-btn {
-          position: relative;
-          padding: 14px 26px;
-          border-radius: 30px;
-          background: linear-gradient(135deg, #3b82f6, #06b6d4);
-          border: none;
-          color: #000;
-          font-weight: 800;
-          font-size: 0.82rem;
-          font-family: inherit;
           display: inline-flex;
           align-items: center;
           gap: 10px;
-          cursor: pointer;
-          transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          text-decoration: none;
+          padding: 14px 26px;
+          border-radius: 30px;
+          background: linear-gradient(135deg, #3b82f6, #06b6d4);
+          color: #000 !important;
+          font-weight: 800;
+          font-size: 0.82rem;
+          font-family: inherit;
+          text-decoration: none !important;
           text-transform: uppercase;
           letter-spacing: 1.2px;
+          transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
           box-shadow: 0 4px 25px rgba(59, 130, 246, 0.3);
+          border: none;
+          cursor: pointer;
+          position: relative;
           overflow: hidden;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
+
         .create-btn::before {
           content: "";
           position: absolute;
@@ -135,32 +182,44 @@ export default function DashboardHome() {
         }
         .create-btn:hover {
           transform: translateY(-3px) scale(1.03);
-          box-shadow: 0 15px 45px rgba(59, 130, 246, 0.5);
+          box-shadow: 0 15px 45px rgba(59, 130, 246, 0.55);
+          color: #000 !important;
         }
-        .create-btn .btn-icon {
-          width: 22px;
-          height: 22px;
+        .create-btn:active {
+          transform: translateY(-1px) scale(1.01);
+        }
+
+        .btn-icon {
+          width: 24px;
+          height: 24px;
           border-radius: 50%;
           background: rgba(0, 0, 0, 0.15);
           display: grid;
           place-items: center;
-          font-size: 0.7rem;
-          transition: transform 0.3s ease;
+          font-size: 0.72rem;
+          transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         .create-btn:hover .btn-icon {
-          transform: rotate(90deg);
+          transform: rotate(90deg) scale(1.1);
+        }
+        .create-btn .arrow {
+          font-size: 0.72rem;
+          transition: transform 0.3s ease;
+        }
+        .create-btn:hover .arrow {
+          transform: translateX(3px);
         }
 
         /* ==================== STATS ==================== */
         .stats-row {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-          gap: 14px;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 16px;
           margin-bottom: 28px;
         }
 
         .stat-card {
-          padding: 20px;
+          padding: 22px;
           border-radius: 20px;
           background: rgba(8, 15, 30, 0.6);
           backdrop-filter: blur(20px);
@@ -190,37 +249,29 @@ export default function DashboardHome() {
         }
 
         .stat-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: 14px;
+          width: 56px;
+          height: 56px;
+          border-radius: 16px;
           display: grid;
           place-items: center;
-          font-size: 1.15rem;
+          font-size: 1.35rem;
           flex-shrink: 0;
-          transition: transform 0.3s ease;
+          transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         .stat-card:hover .stat-icon {
-          transform: scale(1.1) rotate(-5deg);
+          transform: scale(1.1) rotate(-8deg);
         }
         .stat-icon.total {
           background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(6, 182, 212, 0.15));
           color: #60a5fa;
-          border: 1px solid rgba(59, 130, 246, 0.3);
-        }
-        .stat-icon.api {
-          background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(14, 165, 233, 0.15));
-          color: #22d3ee;
-          border: 1px solid rgba(6, 182, 212, 0.3);
-        }
-        .stat-icon.simple {
-          background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.15));
-          color: #4ade80;
-          border: 1px solid rgba(34, 197, 94, 0.3);
+          border: 1px solid rgba(59, 130, 246, 0.35);
+          box-shadow: 0 0 25px rgba(59, 130, 246, 0.15);
         }
         .stat-icon.active {
-          background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(139, 92, 246, 0.15));
-          color: #c084fc;
-          border: 1px solid rgba(168, 85, 247, 0.3);
+          background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.15));
+          color: #4ade80;
+          border: 1px solid rgba(34, 197, 94, 0.35);
+          box-shadow: 0 0 25px rgba(34, 197, 94, 0.15);
         }
 
         .stat-body {
@@ -228,25 +279,37 @@ export default function DashboardHome() {
           min-width: 0;
         }
         .stat-label {
-          font-size: 0.6rem;
+          font-size: 0.65rem;
           color: rgba(255, 255, 255, 0.4);
           text-transform: uppercase;
           letter-spacing: 1.5px;
           font-weight: 700;
-          margin-bottom: 4px;
+          margin-bottom: 6px;
         }
         .stat-value {
-          font-size: 1.7rem;
+          font-size: 2rem;
           font-weight: 900;
           color: #fff;
           line-height: 1;
-          letter-spacing: -1px;
+          letter-spacing: -1.5px;
         }
         .stat-value.blue {
           background: linear-gradient(135deg, #3b82f6, #06b6d4);
           -webkit-background-clip: text;
           background-clip: text;
           color: transparent;
+        }
+        .stat-value.green {
+          background: linear-gradient(135deg, #22c55e, #4ade80);
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+        }
+
+        .stat-sub {
+          font-size: 0.68rem;
+          color: rgba(255, 255, 255, 0.3);
+          margin-top: 4px;
         }
 
         /* ==================== TOOLBAR ==================== */
@@ -294,42 +357,6 @@ export default function DashboardHome() {
           color: rgba(255, 255, 255, 0.25);
         }
 
-        .filter-pills {
-          display: flex;
-          gap: 4px;
-          padding: 4px;
-          border-radius: 30px;
-          background: rgba(8, 15, 30, 0.7);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(0, 150, 255, 0.12);
-        }
-        .pill {
-          padding: 9px 18px;
-          border-radius: 30px;
-          border: none;
-          background: transparent;
-          color: rgba(255, 255, 255, 0.5);
-          font-size: 0.78rem;
-          font-weight: 700;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          font-family: inherit;
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-        }
-        .pill i {
-          font-size: 0.7rem;
-        }
-        .pill:hover {
-          color: #fff;
-        }
-        .pill.active {
-          background: linear-gradient(135deg, #3b82f6, #06b6d4);
-          color: #000;
-          box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-        }
-
         /* ==================== STATE BOX ==================== */
         .state-box {
           padding: 70px 20px;
@@ -340,33 +367,33 @@ export default function DashboardHome() {
           border: 1px dashed rgba(0, 150, 255, 0.2);
         }
         .state-icon-wrap {
-          width: 80px;
-          height: 80px;
-          border-radius: 24px;
+          width: 88px;
+          height: 88px;
+          border-radius: 26px;
           background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(6, 182, 212, 0.1));
           border: 1px solid rgba(59, 130, 246, 0.25);
           display: grid;
           place-items: center;
-          margin: 0 auto 20px;
-          font-size: 2rem;
+          margin: 0 auto 22px;
+          font-size: 2.2rem;
           color: #60a5fa;
           box-shadow: 0 0 40px rgba(59, 130, 246, 0.15);
         }
         .state-title {
-          font-size: 1.15rem;
+          font-size: 1.2rem;
           font-weight: 800;
           margin-bottom: 8px;
         }
         .state-sub {
           font-size: 0.85rem;
           color: rgba(255, 255, 255, 0.4);
-          margin-bottom: 24px;
+          margin-bottom: 26px;
         }
 
         /* ==================== COMMAND GRID ==================== */
         .cmd-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
           gap: 16px;
         }
 
@@ -380,6 +407,12 @@ export default function DashboardHome() {
           transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
           position: relative;
           overflow: hidden;
+        }
+        .cmd-card.inactive {
+          opacity: 0.55;
+        }
+        .cmd-card.inactive:hover {
+          opacity: 0.85;
         }
         .cmd-card::before {
           content: "";
@@ -403,7 +436,7 @@ export default function DashboardHome() {
           opacity: 1;
         }
 
-        /* Card top strip indicator */
+        /* Card top strip */
         .cmd-card::after {
           content: "";
           position: absolute;
@@ -417,6 +450,10 @@ export default function DashboardHome() {
         }
         .cmd-card:hover::after {
           opacity: 1;
+        }
+        .cmd-card.inactive::after {
+          background: linear-gradient(90deg, transparent, #64748b, transparent);
+          opacity: 0.5;
         }
 
         .cmd-head {
@@ -432,18 +469,18 @@ export default function DashboardHome() {
         .cmd-title {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
           min-width: 0;
           flex: 1;
         }
 
         .cmd-avatar {
-          width: 40px;
-          height: 40px;
+          width: 42px;
+          height: 42px;
           border-radius: 12px;
           display: grid;
           place-items: center;
-          font-size: 0.95rem;
+          font-size: 1rem;
           flex-shrink: 0;
           transition: transform 0.3s ease;
         }
@@ -460,13 +497,18 @@ export default function DashboardHome() {
           color: #4ade80;
           border: 1px solid rgba(34, 197, 94, 0.3);
         }
+        .cmd-avatar.gray {
+          background: rgba(100, 116, 139, 0.15);
+          color: #94a3b8;
+          border: 1px solid rgba(100, 116, 139, 0.25);
+        }
 
         .cmd-name-block {
           min-width: 0;
           flex: 1;
         }
         .cmd-name {
-          font-size: 1.05rem;
+          font-size: 1.08rem;
           font-weight: 800;
           color: #fff;
           letter-spacing: -0.3px;
@@ -477,6 +519,7 @@ export default function DashboardHome() {
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          margin-bottom: 4px;
         }
         .cmd-name .prefix {
           background: linear-gradient(135deg, #3b82f6, #06b6d4);
@@ -494,7 +537,6 @@ export default function DashboardHome() {
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.8px;
-          margin-top: 4px;
           padding: 2px 8px;
           border-radius: 20px;
         }
@@ -509,23 +551,49 @@ export default function DashboardHome() {
           border: 1px solid rgba(34, 197, 94, 0.25);
         }
 
-        .cmd-status-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: #22c55e;
-          box-shadow: 0 0 10px rgba(34, 197, 94, 0.6);
+        /* ==================== TOGGLE SWITCH ==================== */
+        .toggle-wrap {
+          display: flex;
+          align-items: center;
+          gap: 8px;
           flex-shrink: 0;
-          animation: dotPulse 2s infinite;
         }
-        .cmd-status-dot.inactive {
-          background: #64748b;
-          box-shadow: none;
-          animation: none;
+
+        .toggle {
+          position: relative;
+          width: 44px;
+          height: 24px;
+          border-radius: 30px;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          cursor: pointer;
+          transition: all 0.3s ease;
+          flex-shrink: 0;
         }
-        @keyframes dotPulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
+        .toggle::after {
+          content: "";
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.6);
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .toggle.on {
+          background: linear-gradient(135deg, #22c55e, #4ade80);
+          border-color: rgba(34, 197, 94, 0.5);
+          box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+        }
+        .toggle.on::after {
+          left: calc(100% - 20px);
+          background: #fff;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+        .toggle.busy {
+          opacity: 0.5;
+          cursor: wait;
         }
 
         .cmd-desc {
@@ -628,7 +696,7 @@ export default function DashboardHome() {
         /* ==================== LOADING ==================== */
         .loading-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
           gap: 16px;
         }
         .skeleton {
@@ -651,17 +719,30 @@ export default function DashboardHome() {
 
         /* ==================== MOBILE ==================== */
         @media (max-width: 640px) {
-          .page-head-left h1 { font-size: 1.5rem; }
-          .page-head-left h1 .title-icon { width: 38px; height: 38px; font-size: 0.95rem; }
-          .page-head-left p { margin-left: 50px; font-size: 0.78rem; }
-          .create-btn { padding: 12px 20px; font-size: 0.72rem; }
-          .stat-card { padding: 16px; border-radius: 16px; gap: 12px; }
-          .stat-icon { width: 40px; height: 40px; font-size: 1rem; }
-          .stat-value { font-size: 1.4rem; }
+          .page-head {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .page-head-left {
+            gap: 12px;
+          }
+          .title-icon {
+            width: 44px;
+            height: 44px;
+            font-size: 1.05rem;
+          }
+          .page-title-block h1 { font-size: 1.4rem; }
+          .create-btn {
+            width: 100%;
+            justify-content: center;
+            padding: 13px 22px;
+          }
+          .stat-card { padding: 18px; border-radius: 16px; gap: 14px; }
+          .stat-icon { width: 46px; height: 46px; font-size: 1.1rem; border-radius: 12px; }
+          .stat-value { font-size: 1.6rem; }
           .cmd-card { padding: 18px; border-radius: 18px; }
           .cmd-grid, .loading-grid { grid-template-columns: 1fr; }
           .toolbar { flex-direction: column; align-items: stretch; }
-          .filter-pills { justify-content: center; }
           .search-box { min-width: auto; }
         }
       `}</style>
@@ -669,21 +750,23 @@ export default function DashboardHome() {
       {/* ==================== HEADER ==================== */}
       <div className="page-head">
         <div className="page-head-left">
-          <h1>
-            <div className="title-icon">
-              <i className="fas fa-layer-group" />
-            </div>
-            Your <span className="blue">Commands</span>
-          </h1>
-          <p>Manage your WhatsApp bot commands</p>
+          <div className="title-icon">
+            <i className="fas fa-layer-group" />
+          </div>
+          <div className="page-title-block">
+            <h1>
+              Your <span className="blue">Commands</span>
+            </h1>
+            <p>Manage your WhatsApp bot commands</p>
+          </div>
         </div>
 
         <Link href="/dashboard/create" className="create-btn">
           <span className="btn-icon">
             <i className="fas fa-plus" />
           </span>
-          Create Command
-          <i className="fas fa-arrow-right" />
+          <span>Create Command</span>
+          <i className="fas fa-arrow-right arrow" />
         </Link>
       </div>
 
@@ -694,31 +777,11 @@ export default function DashboardHome() {
             <i className="fas fa-cubes" />
           </div>
           <div className="stat-body">
-            <div className="stat-label">Total</div>
+            <div className="stat-label">Total Commands</div>
             <div className="stat-value blue">{commands.length}</div>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon api">
-            <i className="fas fa-bolt" />
-          </div>
-          <div className="stat-body">
-            <div className="stat-label">API</div>
-            <div className="stat-value">
-              {commands.filter((c) => c.type === "API").length}
-            </div>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon simple">
-            <i className="fas fa-comment-dots" />
-          </div>
-          <div className="stat-body">
-            <div className="stat-label">Simple</div>
-            <div className="stat-value">
-              {commands.filter((c) => c.type === "simple").length}
+            <div className="stat-sub">
+              {commands.length === 1 ? "1 command" : `${commands.length} commands`}{" "}
+              registered
             </div>
           </div>
         </div>
@@ -729,8 +792,9 @@ export default function DashboardHome() {
           </div>
           <div className="stat-body">
             <div className="stat-label">Active</div>
-            <div className="stat-value">
-              {commands.filter((c) => c.isActive).length}
+            <div className="stat-value green">{activeCount}</div>
+            <div className="stat-sub">
+              {commands.length - activeCount} inactive
             </div>
           </div>
         </div>
@@ -747,22 +811,6 @@ export default function DashboardHome() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-          </div>
-          <div className="filter-pills">
-            {[
-              { v: "all", label: "All", icon: "fa-grip" },
-              { v: "simple", label: "Simple", icon: "fa-comment-dots" },
-              { v: "API", label: "API", icon: "fa-bolt" },
-            ].map((f) => (
-              <button
-                key={f.v}
-                className={`pill ${filter === f.v ? "active" : ""}`}
-                onClick={() => setFilter(f.v)}
-              >
-                <i className={`fas ${f.icon}`} />
-                {f.label}
-              </button>
-            ))}
           </div>
         </div>
       )}
@@ -785,7 +833,7 @@ export default function DashboardHome() {
             <span className="btn-icon">
               <i className="fas fa-rotate-right" />
             </span>
-            Retry
+            <span>Retry</span>
           </button>
         </div>
       ) : commands.length === 0 ? (
@@ -801,7 +849,8 @@ export default function DashboardHome() {
             <span className="btn-icon">
               <i className="fas fa-plus" />
             </span>
-            Create First Command
+            <span>Create First Command</span>
+            <i className="fas fa-arrow-right arrow" />
           </Link>
         </div>
       ) : filtered.length === 0 ? (
@@ -810,81 +859,102 @@ export default function DashboardHome() {
             <i className="fas fa-magnifying-glass" />
           </div>
           <div className="state-title">No matches found</div>
-          <div className="state-sub">Try a different search or filter</div>
+          <div className="state-sub">Try a different search</div>
         </div>
       ) : (
         <div className="cmd-grid">
-          {filtered.map((cmd) => (
-            <div key={cmd.command} className="cmd-card">
-              <div className="cmd-head">
-                <div className="cmd-title">
-                  <div className={`cmd-avatar ${cmd.type.toLowerCase()}`}>
-                    <i
-                      className={`fas ${
-                        cmd.type === "API" ? "fa-bolt" : "fa-comment-dots"
+          {filtered.map((cmd) => {
+            const busy = toggling === cmd.command;
+            return (
+              <div
+                key={cmd.command}
+                className={`cmd-card ${!cmd.isActive ? "inactive" : ""}`}
+              >
+                <div className="cmd-head">
+                  <div className="cmd-title">
+                    <div
+                      className={`cmd-avatar ${
+                        !cmd.isActive
+                          ? "gray"
+                          : cmd.type.toLowerCase()
                       }`}
-                    />
-                  </div>
-                  <div className="cmd-name-block">
-                    <div className="cmd-name">
-                      <span className="prefix">.</span>
-                      {cmd.command}
-                    </div>
-                    <span
-                      className={`cmd-type-badge ${cmd.type.toLowerCase()}`}
                     >
                       <i
                         className={`fas ${
                           cmd.type === "API" ? "fa-bolt" : "fa-comment-dots"
                         }`}
                       />
-                      {cmd.type}
-                    </span>
+                    </div>
+                    <div className="cmd-name-block">
+                      <div className="cmd-name">
+                        <span className="prefix">.</span>
+                        {cmd.command}
+                      </div>
+                      <span
+                        className={`cmd-type-badge ${cmd.type.toLowerCase()}`}
+                      >
+                        <i
+                          className={`fas ${
+                            cmd.type === "API" ? "fa-bolt" : "fa-comment-dots"
+                          }`}
+                        />
+                        {cmd.type}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Toggle switch */}
+                  <div className="toggle-wrap">
+                    <div
+                      className={`toggle ${
+                        cmd.isActive ? "on" : ""
+                      } ${busy ? "busy" : ""}`}
+                      onClick={() => !busy && toggleActive(cmd)}
+                      title={
+                        cmd.isActive ? "Click to deactivate" : "Click to activate"
+                      }
+                      role="switch"
+                      aria-checked={cmd.isActive}
+                    />
                   </div>
                 </div>
-                <div
-                  className={`cmd-status-dot ${
-                    cmd.isActive ? "" : "inactive"
-                  }`}
-                  title={cmd.isActive ? "Active" : "Inactive"}
-                />
-              </div>
 
-              {cmd.desc ? (
-                <div className="cmd-desc">{cmd.desc}</div>
-              ) : (
-                <div className="cmd-desc empty">No description</div>
-              )}
-
-              <div className="cmd-tags">
-                {cmd.react && (
-                  <span className="tag react-tag">{cmd.react}</span>
+                {cmd.desc ? (
+                  <div className="cmd-desc">{cmd.desc}</div>
+                ) : (
+                  <div className="cmd-desc empty">No description</div>
                 )}
-                {cmd.aliase?.slice(0, 2).map((a, i) => (
-                  <span key={i} className="tag alias">
-                    <span className="dot">.</span>
-                    {a}
-                  </span>
-                ))}
-                {cmd.aliase?.length > 2 && (
-                  <span className="tag more">
-                    <i className="fas fa-plus" />
-                    {cmd.aliase.length - 2}
-                  </span>
-                )}
-              </div>
 
-              <div className="cmd-actions">
-                <Link
-                  href={`/dashboard/create?edit=${cmd.command}`}
-                  className="icon-btn"
-                >
-                  <i className="fas fa-pen-to-square" />
-                  Edit Command
-                </Link>
+                <div className="cmd-tags">
+                  {cmd.react && (
+                    <span className="tag react-tag">{cmd.react}</span>
+                  )}
+                  {cmd.aliase?.slice(0, 2).map((a, i) => (
+                    <span key={i} className="tag alias">
+                      <span className="dot">.</span>
+                      {a}
+                    </span>
+                  ))}
+                  {cmd.aliase?.length > 2 && (
+                    <span className="tag more">
+                      <i className="fas fa-plus" />
+                      {cmd.aliase.length - 2}
+                    </span>
+                  )}
+                </div>
+
+                <div className="cmd-actions">
+                  <Link
+                    href={`/dashboard/create?edit=${cmd.command}`}
+                    className="icon-btn"
+                  >
+                    <i className="fas fa-pen-to-square" />
+                    Edit Command
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </>
