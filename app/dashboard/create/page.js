@@ -63,7 +63,6 @@ export default function CreateCommand() {
   const [loadingExisting, setLoadingExisting] = useState(!!editName);
   const [existingCommands, setExistingCommands] = useState([]);
 
-  // 🔥 category dropdown state
   const [categoryOpen, setCategoryOpen] = useState(false);
   const categoryRef = useRef(null);
 
@@ -72,7 +71,6 @@ export default function CreateCommand() {
 
   const templateRef = useRef(null);
 
-  /* ---------- close category dropdown on outside click ---------- */
   useEffect(() => {
     function handleClickOutside(e) {
       if (
@@ -593,7 +591,6 @@ export default function CreateCommand() {
     return String(cur);
   }
 
-  /* ---------- selected category object ---------- */
   const selectedCategory =
     CATEGORIES.find((c) => c.value === cmd.category) || CATEGORIES[0];
 
@@ -626,7 +623,6 @@ export default function CreateCommand() {
         }
         @keyframes wizSpin { to { transform: rotate(360deg); } }
 
-        /* HEADER */
         .wiz-header { margin-bottom: 28px; }
         .wiz-title {
           font-size: 1.9rem;
@@ -668,7 +664,6 @@ export default function CreateCommand() {
           .wiz-sub { margin-left: 50px; font-size: 0.78rem; }
         }
 
-        /* STEPS */
         .steps-wrap {
           display: flex;
           align-items: center;
@@ -739,7 +734,6 @@ export default function CreateCommand() {
           .step-connector { width: 16px; }
         }
 
-        /* PANEL */
         .wiz-panel {
           background: rgba(8, 15, 30, 0.65);
           backdrop-filter: blur(22px);
@@ -764,7 +758,6 @@ export default function CreateCommand() {
           .wiz-panel { padding: 22px 16px; border-radius: 20px; }
         }
 
-        /* FIELDS */
         .field { margin-bottom: 20px; }
         .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         @media (max-width: 600px) { .field-row { grid-template-columns: 1fr; } }
@@ -843,14 +836,10 @@ export default function CreateCommand() {
         }
 
         /* ======================================================
-           🔥 CATEGORY DROPDOWN — FIXED & REFINED
+           🔥 CATEGORY DROPDOWN — INLINE EXPAND (pushes content)
            ====================================================== */
         .category-dropdown {
           position: relative;
-          z-index: 30;
-        }
-        .category-dropdown.open {
-          z-index: 100;
         }
 
         .category-trigger {
@@ -923,24 +912,22 @@ export default function CreateCommand() {
           color: #60a5fa;
         }
 
-        /* menu — lighter glass, proper layering */
+        /* menu — inline, pushes content below */
         .category-menu {
-          position: absolute;
-          top: calc(100% + 8px);
-          left: 0;
-          right: 0;
+          margin-top: 8px;
           background: rgba(10, 15, 30, 0.82);
           backdrop-filter: blur(18px);
           -webkit-backdrop-filter: blur(18px);
           border: 1px solid rgba(0, 150, 255, 0.22);
           border-radius: 14px;
           padding: 8px;
-          z-index: 100;
           box-shadow: 0 25px 50px rgba(0, 0, 0, 0.55),
                       0 0 40px rgba(59, 130, 246, 0.06);
           animation: dropdownIn 0.2s ease;
           max-height: 320px;
           overflow-y: auto;
+          position: relative;
+          z-index: 10;
         }
         .category-menu::-webkit-scrollbar { width: 5px; }
         .category-menu::-webkit-scrollbar-thumb {
@@ -1015,7 +1002,7 @@ export default function CreateCommand() {
         }
 
         /* ======================================================
-           🔥 OWNER-ONLY — same theme as the rest
+           🔥 OWNER-ONLY — unified blue theme
            ====================================================== */
         .owner-panel {
           position: relative;
@@ -1122,7 +1109,7 @@ export default function CreateCommand() {
           color: rgba(255, 255, 255, 0.65);
         }
 
-        /* BLUE SWITCH (same as other toggles) */
+        /* BLUE SWITCH */
         .switch-blue {
           position: relative;
           width: 48px;
@@ -1156,7 +1143,6 @@ export default function CreateCommand() {
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
         }
 
-        /* TYPE SELECTOR */
         .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         @media (max-width: 500px) { .type-grid { grid-template-columns: 1fr; } }
         .type-card {
@@ -1210,7 +1196,6 @@ export default function CreateCommand() {
           color: rgba(255, 255, 255, 0.45);
         }
 
-        /* TOGGLE ROW */
         .toggle-row {
           display: flex;
           align-items: center;
@@ -1287,7 +1272,6 @@ export default function CreateCommand() {
           box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         }
 
-        /* QUERY SECTION */
         .query-section {
           padding: 18px;
           background: rgba(0, 0, 0, 0.2);
@@ -1349,7 +1333,6 @@ export default function CreateCommand() {
           transform: translateY(-1px);
         }
 
-        /* TEST API BUTTON */
         .test-btn {
           display: inline-flex;
           align-items: center;
@@ -1376,7 +1359,6 @@ export default function CreateCommand() {
         }
         .test-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* TEST RESULT */
         .test-result {
           margin-top: 20px;
           padding: 20px;
@@ -1445,7 +1427,6 @@ export default function CreateCommand() {
           margin: 4px 6px 0 0;
         }
 
-        /* DROPDOWN FIELD GROUPS */
         .fields-hint {
           display: flex;
           gap: 10px;
@@ -1657,7 +1638,6 @@ export default function CreateCommand() {
           flex-shrink: 0;
         }
 
-        /* CONTENT TYPE SELECTOR */
         .content-type-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
@@ -1700,7 +1680,6 @@ export default function CreateCommand() {
         }
         .content-type-card.active .ct-label { color: #fff; }
 
-        /* FAKE CHAT */
         .chat-window {
           background: linear-gradient(180deg, #0b141a 0%, #0a1218 100%);
           border-radius: 18px;
@@ -1770,7 +1749,6 @@ export default function CreateCommand() {
           border-top: 8px solid transparent;
         }
 
-        /* WhatsApp-style line elements */
         .chat-bubble.bot .line-mono {
           display: block;
           background: rgba(0, 0, 0, 0.4);
@@ -1809,7 +1787,6 @@ export default function CreateCommand() {
           margin-top: 4px;
         }
 
-        /* Image wrap */
         .chat-image-wrap {
           border-radius: 14px;
           overflow: hidden;
@@ -1872,7 +1849,6 @@ export default function CreateCommand() {
           padding-right: 8px;
         }
 
-        /* NAV */
         .wiz-nav {
           display: flex;
           justify-content: space-between;
@@ -1920,7 +1896,6 @@ export default function CreateCommand() {
           .nav-btn { justify-content: center; width: 100%; }
         }
 
-        /* ERROR BANNER */
         .error-banner {
           display: flex;
           align-items: center;
@@ -1940,7 +1915,6 @@ export default function CreateCommand() {
           75% { transform: translateX(6px); }
         }
 
-        /* INFO CARD */
         .info-card {
           display: flex;
           gap: 12px;
@@ -1968,7 +1942,6 @@ export default function CreateCommand() {
           font-size: 0.75rem;
         }
 
-        /* SYNTAX FEEDBACK */
         .textarea.has-error {
           border-color: rgba(239, 68, 68, 0.5) !important;
           box-shadow: 0 0 25px rgba(239, 68, 68, 0.15) !important;
@@ -2035,7 +2008,6 @@ export default function CreateCommand() {
           font-weight: 400;
         }
 
-        /* PREVIEW BADGE */
         .preview-badge {
           align-self: center;
           display: inline-flex;
@@ -2058,7 +2030,6 @@ export default function CreateCommand() {
           border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        /* IMAGE SECTION */
         .image-config {
           padding: 18px;
           border-radius: 14px;
@@ -2300,19 +2271,14 @@ export default function CreateCommand() {
               </div>
             </div>
 
-            {/* 🔥 CATEGORY DROPDOWN */}
+            {/* 🔥 CATEGORY DROPDOWN — inline, pushes content */}
             <div className="field">
               <label>
                 <i className="fas fa-folder-tree" />
                 Category <span className="req">*</span>
               </label>
 
-              <div
-                className={`category-dropdown ${
-                  categoryOpen ? "open" : ""
-                }`}
-                ref={categoryRef}
-              >
+              <div className="category-dropdown" ref={categoryRef}>
                 <button
                   type="button"
                   className={`category-trigger ${
@@ -2358,7 +2324,7 @@ export default function CreateCommand() {
               </div>
             </div>
 
-            {/* 🔥 OWNER-ONLY — unified theme */}
+            {/* 🔥 OWNER-ONLY — unified blue theme */}
             <div className="field">
               <div
                 className={`owner-panel ${
