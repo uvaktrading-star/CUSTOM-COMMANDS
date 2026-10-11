@@ -6,7 +6,7 @@ import mongoose from "mongoose";
    ====================================================== */
 const MONGODB_URI =
   process.env.MAIN_MONGODB_URI ||
-  "mongodb+srv://zanta-user-settings:Akashkavindu12345@zanta-user-settings.gl5fqgn.mongodb.net/zanta-user-settings?retryWrites=true&w=majority&appName=zanta-user-settings";
+  "mongodb+srv://zanta-user-settings:Akashkavindu12345@zanta-user-settings.gl5fqgn.mongodb.net/test?retryWrites=true&w=majority&appName=zanta-user-settings";
 
 let cached = global._mongooseCache;
 if (!cached) {
@@ -102,10 +102,10 @@ export async function POST(req) {
         { status: 401 }
       );
     }
+
+    /* ---------- Payment check ---------- */
     const status = String(user.paymentStatus || "free").toLowerCase();
-
     const PAID_STATUSES = ["paid", "premium", "pro", "active"];
-
     const isPaid = PAID_STATUSES.includes(status);
 
     if (!isPaid) {
@@ -122,7 +122,6 @@ export async function POST(req) {
     }
 
     /* ---------- Success ---------- */
-    // password එක client එකට යවන්නේ නෑ
     const { password: _pw, __v, _id, ...safeSettings } = user;
 
     return NextResponse.json({
@@ -144,9 +143,6 @@ export async function POST(req) {
   }
 }
 
-/* ======================================================
-   🧪 GET /api/check — health check
-   ====================================================== */
 export async function GET() {
   return NextResponse.json({
     ok: true,
