@@ -114,6 +114,9 @@ export default function DashboardHome() {
   const activeCount = commands.filter((c) => c.isActive).length;
   const usagePercent = Math.min((commands.length / MAX_COMMANDS) * 100, 100);
 
+  // 🔥 Create button පෙන්නන්නේ commands 1+ තියෙන විට විතරයි
+  const showBottomCreateBtn = commands.length > 0;
+
   return (
     <>
       <style jsx>{`
@@ -993,6 +996,129 @@ export default function DashboardHome() {
           100% { background-position: -200% 0; }
         }
 
+        /* ==================== BOTTOM CREATE BUTTON ==================== */
+        .bottom-create-wrap {
+          display: flex;
+          justify-content: center;
+          margin-top: 32px;
+          padding-top: 8px;
+          animation: fadeInUp 0.4s ease;
+        }
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .bottom-create-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 12px;
+          padding: 16px 32px;
+          border-radius: 40px;
+          background: linear-gradient(135deg, #3b82f6, #06b6d4);
+          color: #000;
+          font-weight: 800;
+          font-size: 0.85rem;
+          font-family: inherit;
+          text-transform: uppercase;
+          letter-spacing: 1.5px;
+          border: none;
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
+          box-shadow:
+            0 10px 40px rgba(59, 130, 246, 0.4),
+            0 0 60px rgba(59, 130, 246, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .bottom-create-btn::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(135deg, #06b6d4, #3b82f6);
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          z-index: 0;
+        }
+        .bottom-create-btn::after {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.35),
+            transparent
+          );
+          transition: left 0.6s ease;
+          z-index: 1;
+        }
+        .bottom-create-btn:hover::before {
+          opacity: 1;
+        }
+        .bottom-create-btn:hover::after {
+          left: 100%;
+        }
+        .bottom-create-btn:hover:not(:disabled) {
+          transform: translateY(-4px) scale(1.03);
+          box-shadow:
+            0 20px 60px rgba(59, 130, 246, 0.6),
+            0 0 80px rgba(59, 130, 246, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+        .bottom-create-btn:active:not(:disabled) {
+          transform: translateY(-2px) scale(1.01);
+        }
+        .bottom-create-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none !important;
+        }
+        .bottom-create-btn > * {
+          position: relative;
+          z-index: 2;
+        }
+
+        .bottom-create-btn .pulse-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #000;
+          box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+          animation: pulseDot 1.5s ease-in-out infinite;
+        }
+        @keyframes pulseDot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .bottom-create-btn .btn-icon {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: rgba(0, 0, 0, 0.2);
+          display: grid;
+          place-items: center;
+          font-size: 0.75rem;
+          transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .bottom-create-btn:hover .btn-icon {
+          transform: rotate(90deg) scale(1.15);
+          background: rgba(0, 0, 0, 0.3);
+        }
+
+        .bottom-create-btn .arrow {
+          font-size: 0.75rem;
+          transition: transform 0.3s ease;
+        }
+        .bottom-create-btn:hover .arrow {
+          transform: translateX(5px);
+        }
+
         /* ==================== MOBILE ==================== */
         @media (max-width: 640px) {
           .page-head {
@@ -1012,12 +1138,6 @@ export default function DashboardHome() {
           }
           .page-title-block h1 { font-size: 1.45rem; }
           .page-title-block p { font-size: 0.78rem; }
-          .create-btn {
-            width: 100%;
-            justify-content: center;
-            padding: 13px 22px;
-            font-size: 0.78rem;
-          }
 
           /* Stats — still side by side on mobile */
           .stats-row {
@@ -1053,6 +1173,17 @@ export default function DashboardHome() {
           .state-icon-wrap { width: 80px; height: 80px; font-size: 2rem; border-radius: 22px; }
           .state-title { font-size: 1.1rem; }
           .state-sub { font-size: 0.8rem; }
+
+          .bottom-create-wrap {
+            margin-top: 24px;
+          }
+          .bottom-create-btn {
+            width: 100%;
+            justify-content: center;
+            padding: 15px 24px;
+            font-size: 0.78rem;
+            letter-spacing: 1.2px;
+          }
         }
 
         @media (max-width: 400px) {
@@ -1060,6 +1191,7 @@ export default function DashboardHome() {
           .stat-value { font-size: 1.35rem; }
           .stat-label { font-size: 0.5rem; }
           .cmd-card { padding: 14px; }
+          .bottom-create-btn { font-size: 0.72rem; padding: 14px 18px; }
         }
       `}</style>
 
@@ -1079,24 +1211,7 @@ export default function DashboardHome() {
             </p>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={() => router.push("/dashboard/create")}
-          className="create-btn"
-          disabled={commands.length >= MAX_COMMANDS}
-          title={
-            commands.length >= MAX_COMMANDS
-              ? `Max ${MAX_COMMANDS} commands reached`
-              : "Create a new command"
-          }
-        >
-          <span className="btn-icon">
-            <i className="fas fa-plus" />
-          </span>
-          <span>Create Command</span>
-          <i className="fas fa-arrow-right arrow" />
-        </button>
+        {/* 🔥 Create button එක header එකෙන් අයින් කරා */}
       </div>
 
       {/* ==================== STATS — 2 side by side ==================== */}
@@ -1202,167 +1317,195 @@ export default function DashboardHome() {
           <div className="state-sub">Try a different search</div>
         </div>
       ) : (
-        <div className="cmd-grid">
-          {filtered.map((cmd) => {
-            const busy = toggling === cmd.command;
-            const isDeleting = deleting === cmd.command;
-            const isConfirming = confirmDelete === cmd.command;
+        <>
+          <div className="cmd-grid">
+            {filtered.map((cmd) => {
+              const busy = toggling === cmd.command;
+              const isDeleting = deleting === cmd.command;
+              const isConfirming = confirmDelete === cmd.command;
 
-            return (
-              <div
-                key={cmd._id || cmd.command}
-                className={`cmd-card ${!cmd.isActive ? "inactive" : ""}`}
-              >
-                {/* Confirm banner (shows only when confirming) */}
-                {isConfirming && (
-                  <div className="confirm-banner">
-                    <i className="fas fa-triangle-exclamation" />
-                    Are you sure? This cannot be undone
-                  </div>
-                )}
+              return (
+                <div
+                  key={cmd._id || cmd.command}
+                  className={`cmd-card ${!cmd.isActive ? "inactive" : ""}`}
+                >
+                  {/* Confirm banner (shows only when confirming) */}
+                  {isConfirming && (
+                    <div className="confirm-banner">
+                      <i className="fas fa-triangle-exclamation" />
+                      Are you sure? This cannot be undone
+                    </div>
+                  )}
 
-                <div className="cmd-head">
-                  <div className="cmd-title">
-                    <div
-                      className={`cmd-avatar ${
-                        !cmd.isActive ? "gray" : cmd.type.toLowerCase()
-                      }`}
-                    >
-                      <i
-                        className={`fas ${
-                          cmd.type === "API" ? "fa-bolt" : "fa-comment-dots"
+                  <div className="cmd-head">
+                    <div className="cmd-title">
+                      <div
+                        className={`cmd-avatar ${
+                          !cmd.isActive ? "gray" : cmd.type.toLowerCase()
                         }`}
-                      />
-                    </div>
-                    <div className="cmd-name-block">
-                      <div className="cmd-name">
-                        <span className="prefix">.</span>
-                        {cmd.command}
+                      >
+                        <i
+                          className={`fas ${
+                            cmd.type === "API"
+                              ? "fa-bolt"
+                              : "fa-comment-dots"
+                          }`}
+                        />
                       </div>
-                      <div className="badge-row">
-                        <span
-                          className={`cmd-type-badge ${cmd.type.toLowerCase()}`}
-                        >
-                          <i
-                            className={`fas ${
-                              cmd.type === "API"
-                                ? "fa-bolt"
-                                : "fa-comment-dots"
-                            }`}
-                          />
-                          {cmd.type}
-                        </span>
-                        {cmd.ownerOnly ? (
-                          <span className="cmd-owner-badge owner">
-                            <i className="fas fa-lock" />
-                            Owner
+                      <div className="cmd-name-block">
+                        <div className="cmd-name">
+                          <span className="prefix">.</span>
+                          {cmd.command}
+                        </div>
+                        <div className="badge-row">
+                          <span
+                            className={`cmd-type-badge ${cmd.type.toLowerCase()}`}
+                          >
+                            <i
+                              className={`fas ${
+                                cmd.type === "API"
+                                  ? "fa-bolt"
+                                  : "fa-comment-dots"
+                              }`}
+                            />
+                            {cmd.type}
                           </span>
-                        ) : (
-                          <span className="cmd-owner-badge public">
-                            <i className="fas fa-users" />
-                            Public
-                          </span>
-                        )}
+                          {cmd.ownerOnly ? (
+                            <span className="cmd-owner-badge owner">
+                              <i className="fas fa-lock" />
+                              Owner
+                            </span>
+                          ) : (
+                            <span className="cmd-owner-badge public">
+                              <i className="fas fa-users" />
+                              Public
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
+
+                    <div
+                      className={`toggle ${cmd.isActive ? "on" : ""} ${
+                        busy ? "busy" : ""
+                      }`}
+                      onClick={() => !busy && toggleActive(cmd)}
+                      title={
+                        cmd.isActive
+                          ? "Click to deactivate"
+                          : "Click to activate"
+                      }
+                      role="switch"
+                      aria-checked={cmd.isActive}
+                    />
                   </div>
 
-                  <div
-                    className={`toggle ${cmd.isActive ? "on" : ""} ${
-                      busy ? "busy" : ""
-                    }`}
-                    onClick={() => !busy && toggleActive(cmd)}
-                    title={
-                      cmd.isActive
-                        ? "Click to deactivate"
-                        : "Click to activate"
-                    }
-                    role="switch"
-                    aria-checked={cmd.isActive}
-                  />
-                </div>
-
-                {cmd.desc ? (
-                  <div className="cmd-desc">{cmd.desc}</div>
-                ) : (
-                  <div className="cmd-desc empty">No description</div>
-                )}
-
-                <div className="cmd-tags">
-                  {cmd.react && (
-                    <span className="tag react-tag">{cmd.react}</span>
-                  )}
-                  {cmd.aliase?.slice(0, 2).map((a, i) => (
-                    <span key={i} className="tag alias">
-                      <span className="dot">.</span>
-                      {a}
-                    </span>
-                  ))}
-                  {cmd.aliase?.length > 2 && (
-                    <span className="tag more">
-                      <i className="fas fa-plus" />
-                      {cmd.aliase.length - 2}
-                    </span>
-                  )}
-                </div>
-
-                {/* ==================== ACTIONS ==================== */}
-                <div className="cmd-actions">
-                  {isConfirming ? (
-                    <>
-                      <button
-                        className="confirm-btn"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          deleteCommand(cmd.command);
-                        }}
-                        disabled={isDeleting}
-                      >
-                        {isDeleting ? (
-                          <>
-                            <i className="fas fa-spinner fa-spin" />
-                            Deleting...
-                          </>
-                        ) : (
-                          <>
-                            <i className="fas fa-check" />
-                            Confirm Delete
-                          </>
-                        )}
-                      </button>
-                      <button
-                        className="cancel-btn"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setConfirmDelete(null);
-                        }}
-                        disabled={isDeleting}
-                        title="Cancel"
-                      >
-                        <i className="fas fa-times" />
-                      </button>
-                    </>
+                  {cmd.desc ? (
+                    <div className="cmd-desc">{cmd.desc}</div>
                   ) : (
-                    <button
-                      className="delete-btn"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setConfirmDelete(cmd.command);
-                      }}
-                      title={`Delete .${cmd.command}`}
-                    >
-                      <i className="fas fa-trash" />
-                      Delete Command
-                    </button>
+                    <div className="cmd-desc empty">No description</div>
                   )}
+
+                  <div className="cmd-tags">
+                    {cmd.react && (
+                      <span className="tag react-tag">{cmd.react}</span>
+                    )}
+                    {cmd.aliase?.slice(0, 2).map((a, i) => (
+                      <span key={i} className="tag alias">
+                        <span className="dot">.</span>
+                        {a}
+                      </span>
+                    ))}
+                    {cmd.aliase?.length > 2 && (
+                      <span className="tag more">
+                        <i className="fas fa-plus" />
+                        {cmd.aliase.length - 2}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* ==================== ACTIONS ==================== */}
+                  <div className="cmd-actions">
+                    {isConfirming ? (
+                      <>
+                        <button
+                          className="confirm-btn"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            deleteCommand(cmd.command);
+                          }}
+                          disabled={isDeleting}
+                        >
+                          {isDeleting ? (
+                            <>
+                              <i className="fas fa-spinner fa-spin" />
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <i className="fas fa-check" />
+                              Confirm Delete
+                            </>
+                          )}
+                        </button>
+                        <button
+                          className="cancel-btn"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setConfirmDelete(null);
+                          }}
+                          disabled={isDeleting}
+                          title="Cancel"
+                        >
+                          <i className="fas fa-times" />
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        className="delete-btn"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setConfirmDelete(cmd.command);
+                        }}
+                        title={`Delete .${cmd.command}`}
+                      >
+                        <i className="fas fa-trash" />
+                        Delete Command
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+
+          {/* 🔥 Bottom Create Button — only when user has commands */}
+          {showBottomCreateBtn && (
+            <div className="bottom-create-wrap">
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard/create")}
+                className="bottom-create-btn"
+                disabled={commands.length >= MAX_COMMANDS}
+                title={
+                  commands.length >= MAX_COMMANDS
+                    ? `Max ${MAX_COMMANDS} commands reached`
+                    : "Create a new command"
+                }
+              >
+                <span className="pulse-dot" />
+                <span className="btn-icon">
+                  <i className="fas fa-plus" />
+                </span>
+                <span>Create New Command</span>
+                <i className="fas fa-arrow-right arrow" />
+              </button>
+            </div>
+          )}
+        </>
       )}
     </>
   );
