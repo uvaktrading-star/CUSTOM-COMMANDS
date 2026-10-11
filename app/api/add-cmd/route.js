@@ -29,13 +29,20 @@ function validateCommand(body) {
     errors.push("command is required");
   }
 
+  // 🔥 category validation
+  if (
+    body?.category &&
+    !["main", "download", "logo", "media", "tools"].includes(body.category)
+  ) {
+    errors.push("category must be main/download/logo/media/tools");
+  }
+
   if (!["simple", "API"].includes(body?.type)) {
     errors.push('type must be "simple" or "API"');
   }
 
   if (body?.type === "simple") {
     const ct = body?.textConfig?.contentType;
-    // 🔥 "image" add කළා
     if (!["text", "image", "audio", "video"].includes(ct)) {
       errors.push("textConfig.contentType must be text/image/audio/video");
     }
@@ -97,12 +104,16 @@ function normalizePayload(body, userId) {
     aliase: aliases,
     desc: body.desc || "",
     react: body.react || "",
+
+    // 🔥 NEW fields
+    category: body.category || "main",
+    ownerOnly: !!body.ownerOnly,
+
     type: body.type,
-    isActive: body.isActive !== false,
+    isActive: true, // 🔥 හැමවිටම true (UI එකේ checkbox අයින් කළා)
   };
 
   if (body.type === "simple") {
-    // 🔥 textConfig — caption field add කළා
     base.textConfig = {
       contentType: body.textConfig?.contentType || "text",
       contentValue: body.textConfig?.contentValue || "",
@@ -122,7 +133,6 @@ function normalizePayload(body, userId) {
     base.imageUrl = "";
     base.imageUrlKey = "";
   } else {
-    // 🔥 textConfig — caption field add කළා
     base.textConfig = {
       contentType: "text",
       contentValue: "",
