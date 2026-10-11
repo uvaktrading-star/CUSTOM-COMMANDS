@@ -19,13 +19,19 @@ export default function DashboardHome() {
     loadCommands();
   }, []);
 
-  async function loadCommands() {
+ async function loadCommands() {
     setLoading(true);
     setError("");
     try {
       const userId = localStorage.getItem("bot_id");
-      const res = await fetch("/api/add-cmd", {
-        headers: { Authorization: `Bearer ${userId}` },
+
+      const res = await fetch(`/api/add-cmd?t=${Date.now()}`, {
+        headers: {
+          Authorization: `Bearer ${userId}`,
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+        cache: "no-store",
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Failed to load");
