@@ -123,7 +123,7 @@ export default function DashboardHome() {
           justify-content: space-between;
           align-items: center;
           gap: 20px;
-          margin-bottom: 32px;
+          margin-bottom: 26px;
           flex-wrap: wrap;
         }
 
@@ -271,17 +271,17 @@ export default function DashboardHome() {
           transform: translateX(4px);
         }
 
-        /* ==================== STATS ==================== */
+        /* ==================== STATS — 2 side by side always ==================== */
         .stats-row {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-          gap: 16px;
-          margin-bottom: 28px;
+          grid-template-columns: 1fr 1fr;
+          gap: 14px;
+          margin-bottom: 22px;
         }
 
         .stat-card {
-          padding: 22px;
-          border-radius: 22px;
+          padding: 20px;
+          border-radius: 20px;
           background: rgba(8, 15, 30, 0.65);
           backdrop-filter: blur(22px);
           -webkit-backdrop-filter: blur(22px);
@@ -291,7 +291,8 @@ export default function DashboardHome() {
           overflow: hidden;
           display: flex;
           align-items: center;
-          gap: 18px;
+          gap: 16px;
+          min-width: 0;
         }
         .stat-card:hover {
           transform: translateY(-4px);
@@ -316,12 +317,12 @@ export default function DashboardHome() {
         }
 
         .stat-icon {
-          width: 58px;
-          height: 58px;
-          border-radius: 18px;
+          width: 54px;
+          height: 54px;
+          border-radius: 16px;
           display: grid;
           place-items: center;
-          font-size: 1.4rem;
+          font-size: 1.3rem;
           flex-shrink: 0;
           transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
           position: relative;
@@ -354,10 +355,13 @@ export default function DashboardHome() {
           text-transform: uppercase;
           letter-spacing: 1.5px;
           font-weight: 700;
-          margin-bottom: 6px;
+          margin-bottom: 4px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .stat-value {
-          font-size: 2.2rem;
+          font-size: 2rem;
           font-weight: 900;
           color: #fff;
           line-height: 1;
@@ -377,20 +381,23 @@ export default function DashboardHome() {
         }
 
         .stat-sub {
-          font-size: 0.68rem;
+          font-size: 0.65rem;
           color: rgba(255, 255, 255, 0.35);
-          margin-top: 6px;
+          margin-top: 4px;
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 5px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .stat-sub i {
           color: #60a5fa;
-          font-size: 0.6rem;
+          font-size: 0.55rem;
         }
 
         .stat-progress {
-          margin-top: 10px;
+          margin-top: 8px;
           height: 4px;
           border-radius: 2px;
           background: rgba(255, 255, 255, 0.06);
@@ -417,7 +424,7 @@ export default function DashboardHome() {
           100% { transform: translateX(100%); }
         }
 
-        /* ==================== TOOLBAR ==================== */
+        /* ==================== TOOLBAR / SEARCH ==================== */
         .toolbar {
           display: flex;
           gap: 12px;
@@ -527,13 +534,13 @@ export default function DashboardHome() {
         /* ==================== COMMAND GRID ==================== */
         .cmd-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-          gap: 18px;
+          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+          gap: 16px;
         }
 
         .cmd-card {
-          padding: 22px;
-          border-radius: 22px;
+          padding: 20px;
+          border-radius: 20px;
           background: rgba(8, 15, 30, 0.7);
           backdrop-filter: blur(22px);
           -webkit-backdrop-filter: blur(22px);
@@ -541,12 +548,16 @@ export default function DashboardHome() {
           transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
           position: relative;
           overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          min-height: 260px;
         }
         .cmd-card.inactive {
-          opacity: 0.55;
+          opacity: 0.6;
         }
         .cmd-card.inactive:hover {
-          opacity: 0.85;
+          opacity: 0.9;
         }
         .cmd-card::before {
           content: "";
@@ -589,12 +600,12 @@ export default function DashboardHome() {
           opacity: 0.5;
         }
 
+        /* Card header row */
         .cmd-head {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
           gap: 12px;
-          margin-bottom: 14px;
           position: relative;
           z-index: 1;
         }
@@ -643,7 +654,7 @@ export default function DashboardHome() {
           flex: 1;
         }
         .cmd-name {
-          font-size: 1.1rem;
+          font-size: 1.05rem;
           font-weight: 800;
           color: #fff;
           letter-spacing: -0.3px;
@@ -654,7 +665,7 @@ export default function DashboardHome() {
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          margin-bottom: 4px;
+          margin-bottom: 5px;
         }
         .cmd-name .prefix {
           background: linear-gradient(135deg, #3b82f6, #06b6d4);
@@ -664,15 +675,22 @@ export default function DashboardHome() {
           font-weight: 900;
         }
 
+        /* Badge row — type + owner-only */
+        .badge-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 5px;
+        }
+
         .cmd-type-badge {
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          font-size: 0.6rem;
+          font-size: 0.58rem;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.8px;
-          padding: 3px 9px;
+          padding: 3px 8px;
           border-radius: 20px;
         }
         .cmd-type-badge.api {
@@ -686,13 +704,29 @@ export default function DashboardHome() {
           border: 1px solid rgba(34, 197, 94, 0.25);
         }
 
-        .toggle-wrap {
-          display: flex;
+        .cmd-owner-badge {
+          display: inline-flex;
           align-items: center;
-          gap: 8px;
-          flex-shrink: 0;
+          gap: 4px;
+          font-size: 0.58rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
+          padding: 3px 8px;
+          border-radius: 20px;
+        }
+        .cmd-owner-badge.owner {
+          background: rgba(168, 85, 247, 0.12);
+          color: #c084fc;
+          border: 1px solid rgba(168, 85, 247, 0.3);
+        }
+        .cmd-owner-badge.public {
+          background: rgba(59, 130, 246, 0.1);
+          color: #60a5fa;
+          border: 1px solid rgba(59, 130, 246, 0.25);
         }
 
+        /* Toggle */
         .toggle {
           position: relative;
           width: 46px;
@@ -735,42 +769,42 @@ export default function DashboardHome() {
           cursor: wait;
         }
 
+        /* Description */
         .cmd-desc {
-          font-size: 0.82rem;
+          font-size: 0.8rem;
           color: rgba(255, 255, 255, 0.5);
-          margin-bottom: 16px;
-          line-height: 1.6;
+          line-height: 1.55;
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
-          min-height: 2.6em;
+          min-height: 2.5em;
           position: relative;
           z-index: 1;
         }
         .cmd-desc.empty {
-          opacity: 0.3;
+          opacity: 0.35;
           font-style: italic;
         }
 
+        /* Tags row */
         .cmd-tags {
           display: flex;
           flex-wrap: wrap;
-          gap: 6px;
-          margin-bottom: 18px;
+          gap: 5px;
           position: relative;
           z-index: 1;
         }
         .tag {
-          font-size: 0.65rem;
-          padding: 4px 10px;
+          font-size: 0.63rem;
+          padding: 4px 9px;
           border-radius: 30px;
           font-weight: 700;
           display: inline-flex;
           align-items: center;
-          gap: 5px;
+          gap: 4px;
         }
-        .tag i { font-size: 0.6rem; }
+        .tag i { font-size: 0.55rem; }
         .tag.alias {
           background: rgba(255, 255, 255, 0.04);
           color: rgba(255, 255, 255, 0.55);
@@ -791,28 +825,29 @@ export default function DashboardHome() {
         .tag.react-tag {
           background: rgba(255, 255, 255, 0.04);
           border: 1px solid rgba(255, 255, 255, 0.08);
-          padding: 4px 8px;
+          padding: 3px 8px;
           font-size: 0.85rem;
         }
 
+        /* ==================== ACTIONS ==================== */
         .cmd-actions {
           display: flex;
           gap: 8px;
-          padding-top: 16px;
+          padding-top: 14px;
           border-top: 1px solid rgba(255, 255, 255, 0.05);
           position: relative;
           z-index: 1;
+          margin-top: auto;
         }
 
-        /* ==================== DELETE BUTTON ==================== */
         .delete-btn {
           flex: 1;
-          padding: 11px 16px;
+          padding: 10px 14px;
           border-radius: 30px;
           background: rgba(239, 68, 68, 0.08);
           border: 1px solid rgba(239, 68, 68, 0.25);
           color: #f87171;
-          font-size: 0.78rem;
+          font-size: 0.75rem;
           font-weight: 700;
           font-family: inherit;
           cursor: pointer;
@@ -853,21 +888,96 @@ export default function DashboardHome() {
           opacity: 0.5;
           cursor: not-allowed;
         }
-        .delete-btn.confirming {
+
+        /* Confirm buttons */
+        .confirm-btn {
+          flex: 1;
+          padding: 10px 14px;
+          border-radius: 30px;
           background: linear-gradient(135deg, #ef4444, #dc2626);
+          border: 1px solid transparent;
           color: #fff;
-          border-color: transparent;
+          font-size: 0.75rem;
+          font-weight: 800;
+          font-family: inherit;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
+          box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+          animation: confirmPulse 1.2s ease-in-out infinite;
+        }
+        @keyframes confirmPulse {
+          0%, 100% { box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4); }
+          50% { box-shadow: 0 4px 30px rgba(239, 68, 68, 0.7); }
+        }
+        .confirm-btn:hover:not(:disabled) {
+          transform: translateY(-2px) scale(1.02);
+          box-shadow: 0 12px 40px rgba(239, 68, 68, 0.7);
+        }
+        .confirm-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .cancel-btn {
+          width: 46px;
+          flex-shrink: 0;
+          padding: 10px;
+          border-radius: 30px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 0.85rem;
+          cursor: pointer;
+          transition: all 0.25s ease;
+          display: grid;
+          place-items: center;
+        }
+        .cancel-btn:hover {
+          background: rgba(255, 255, 255, 0.1);
+          color: #fff;
+          border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        /* Confirm banner */
+        .confirm-banner {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          border-radius: 10px;
+          background: rgba(239, 68, 68, 0.08);
+          border: 1px solid rgba(239, 68, 68, 0.25);
+          color: #f87171;
+          font-size: 0.68rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.6px;
+          margin-bottom: 10px;
+          animation: slideDown 0.25s ease;
+        }
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .confirm-banner i {
+          font-size: 0.75rem;
         }
 
         /* ==================== LOADING ==================== */
         .loading-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-          gap: 18px;
+          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+          gap: 16px;
         }
         .skeleton {
-          height: 220px;
-          border-radius: 22px;
+          height: 240px;
+          border-radius: 20px;
           background: linear-gradient(
             90deg,
             rgba(255, 255, 255, 0.03) 0%,
@@ -889,7 +999,7 @@ export default function DashboardHome() {
             flex-direction: column;
             align-items: stretch;
             gap: 14px;
-            margin-bottom: 24px;
+            margin-bottom: 22px;
           }
           .page-head-left {
             gap: 12px;
@@ -908,26 +1018,37 @@ export default function DashboardHome() {
             padding: 13px 22px;
             font-size: 0.78rem;
           }
+
+          /* Stats — still side by side on mobile */
+          .stats-row {
+            gap: 10px;
+            margin-bottom: 18px;
+          }
           .stat-card {
-            padding: 18px;
-            border-radius: 18px;
-            gap: 14px;
+            padding: 14px 12px;
+            border-radius: 16px;
+            gap: 10px;
+            flex-direction: column;
+            align-items: flex-start;
           }
           .stat-icon {
-            width: 48px;
-            height: 48px;
-            font-size: 1.15rem;
-            border-radius: 14px;
+            width: 42px;
+            height: 42px;
+            font-size: 1rem;
+            border-radius: 12px;
           }
-          .stat-value { font-size: 1.7rem; }
-          .stat-label { font-size: 0.6rem; letter-spacing: 1.2px; }
-          .stat-sub { font-size: 0.65rem; }
-          .cmd-card { padding: 18px; border-radius: 18px; }
-          .cmd-avatar { width: 40px; height: 40px; font-size: 0.95rem; }
-          .cmd-name { font-size: 1rem; }
-          .cmd-grid, .loading-grid { grid-template-columns: 1fr; gap: 14px; }
-          .toolbar { flex-direction: column; align-items: stretch; }
+          .stat-value { font-size: 1.5rem; }
+          .stat-label { font-size: 0.55rem; letter-spacing: 1px; }
+          .stat-sub { font-size: 0.6rem; }
+
+          .cmd-card { padding: 16px; border-radius: 18px; gap: 12px; min-height: 240px; }
+          .cmd-avatar { width: 40px; height: 40px; font-size: 0.95rem; border-radius: 12px; }
+          .cmd-name { font-size: 0.98rem; }
+          .cmd-desc { font-size: 0.78rem; }
+          .cmd-grid, .loading-grid { grid-template-columns: 1fr; gap: 12px; }
+          .toolbar { flex-direction: column; align-items: stretch; margin-bottom: 18px; }
           .search-box { min-width: auto; }
+          .search-box input { padding: 12px 16px 12px 42px; font-size: 0.82rem; }
           .state-box { padding: 60px 20px; border-radius: 22px; }
           .state-icon-wrap { width: 80px; height: 80px; font-size: 2rem; border-radius: 22px; }
           .state-title { font-size: 1.1rem; }
@@ -936,7 +1057,9 @@ export default function DashboardHome() {
 
         @media (max-width: 400px) {
           .page-title-block h1 { font-size: 1.25rem; }
-          .stat-value { font-size: 1.5rem; }
+          .stat-value { font-size: 1.35rem; }
+          .stat-label { font-size: 0.5rem; }
+          .cmd-card { padding: 14px; }
         }
       `}</style>
 
@@ -976,7 +1099,7 @@ export default function DashboardHome() {
         </button>
       </div>
 
-      {/* ==================== STATS ==================== */}
+      {/* ==================== STATS — 2 side by side ==================== */}
       <div className="stats-row">
         <div className="stat-card">
           <div className="stat-icon total">
@@ -1013,7 +1136,7 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      {/* ==================== TOOLBAR ==================== */}
+      {/* ==================== SEARCH ==================== */}
       {!loading && commands.length > 0 && (
         <div className="toolbar">
           <div className="search-box">
@@ -1090,6 +1213,14 @@ export default function DashboardHome() {
                 key={cmd._id || cmd.command}
                 className={`cmd-card ${!cmd.isActive ? "inactive" : ""}`}
               >
+                {/* Confirm banner (shows only when confirming) */}
+                {isConfirming && (
+                  <div className="confirm-banner">
+                    <i className="fas fa-triangle-exclamation" />
+                    Are you sure? This cannot be undone
+                  </div>
+                )}
+
                 <div className="cmd-head">
                   <div className="cmd-title">
                     <div
@@ -1108,34 +1239,47 @@ export default function DashboardHome() {
                         <span className="prefix">.</span>
                         {cmd.command}
                       </div>
-                      <span
-                        className={`cmd-type-badge ${cmd.type.toLowerCase()}`}
-                      >
-                        <i
-                          className={`fas ${
-                            cmd.type === "API" ? "fa-bolt" : "fa-comment-dots"
-                          }`}
-                        />
-                        {cmd.type}
-                      </span>
+                      <div className="badge-row">
+                        <span
+                          className={`cmd-type-badge ${cmd.type.toLowerCase()}`}
+                        >
+                          <i
+                            className={`fas ${
+                              cmd.type === "API"
+                                ? "fa-bolt"
+                                : "fa-comment-dots"
+                            }`}
+                          />
+                          {cmd.type}
+                        </span>
+                        {cmd.ownerOnly ? (
+                          <span className="cmd-owner-badge owner">
+                            <i className="fas fa-lock" />
+                            Owner
+                          </span>
+                        ) : (
+                          <span className="cmd-owner-badge public">
+                            <i className="fas fa-users" />
+                            Public
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="toggle-wrap">
-                    <div
-                      className={`toggle ${cmd.isActive ? "on" : ""} ${
-                        busy ? "busy" : ""
-                      }`}
-                      onClick={() => !busy && toggleActive(cmd)}
-                      title={
-                        cmd.isActive
-                          ? "Click to deactivate"
-                          : "Click to activate"
-                      }
-                      role="switch"
-                      aria-checked={cmd.isActive}
-                    />
-                  </div>
+                  <div
+                    className={`toggle ${cmd.isActive ? "on" : ""} ${
+                      busy ? "busy" : ""
+                    }`}
+                    onClick={() => !busy && toggleActive(cmd)}
+                    title={
+                      cmd.isActive
+                        ? "Click to deactivate"
+                        : "Click to activate"
+                    }
+                    role="switch"
+                    aria-checked={cmd.isActive}
+                  />
                 </div>
 
                 {cmd.desc ? (
@@ -1162,12 +1306,12 @@ export default function DashboardHome() {
                   )}
                 </div>
 
-                {/* ==================== DELETE BUTTON ==================== */}
+                {/* ==================== ACTIONS ==================== */}
                 <div className="cmd-actions">
                   {isConfirming ? (
                     <>
                       <button
-                        className="delete-btn confirming"
+                        className="confirm-btn"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -1188,19 +1332,13 @@ export default function DashboardHome() {
                         )}
                       </button>
                       <button
-                        className="delete-btn"
+                        className="cancel-btn"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                           setConfirmDelete(null);
                         }}
                         disabled={isDeleting}
-                        style={{
-                          maxWidth: 60,
-                          background: "rgba(255,255,255,0.05)",
-                          borderColor: "rgba(255,255,255,0.1)",
-                          color: "rgba(255,255,255,0.5)",
-                        }}
                         title="Cancel"
                       >
                         <i className="fas fa-times" />
