@@ -19,7 +19,7 @@ export default function DashboardHome() {
     loadCommands();
   }, []);
 
- async function loadCommands() {
+  async function loadCommands() {
     setLoading(true);
     setError("");
     try {
@@ -120,7 +120,6 @@ export default function DashboardHome() {
   const activeCount = commands.filter((c) => c.isActive).length;
   const usagePercent = Math.min((commands.length / MAX_COMMANDS) * 100, 100);
 
-  // 🔥 Create button පෙන්නන්නේ commands 1+ තියෙන විට විතරයි
   const showBottomCreateBtn = commands.length > 0;
 
   return (
@@ -1217,7 +1216,6 @@ export default function DashboardHome() {
             </p>
           </div>
         </div>
-        {/* 🔥 Create button එක header එකෙන් අයින් කරා */}
       </div>
 
       {/* ==================== STATS — 2 side by side ==================== */}
@@ -1335,7 +1333,6 @@ export default function DashboardHome() {
                   key={cmd._id || cmd.command}
                   className={`cmd-card ${!cmd.isActive ? "inactive" : ""}`}
                 >
-                  {/* Confirm banner (shows only when confirming) */}
                   {isConfirming && (
                     <div className="confirm-banner">
                       <i className="fas fa-triangle-exclamation" />
@@ -1430,7 +1427,6 @@ export default function DashboardHome() {
                     )}
                   </div>
 
-                  {/* ==================== ACTIONS ==================== */}
                   <div className="cmd-actions">
                     {isConfirming ? (
                       <>
@@ -1488,7 +1484,6 @@ export default function DashboardHome() {
             })}
           </div>
 
-          {/* 🔥 Bottom Create Button — only when user has commands */}
           {showBottomCreateBtn && (
             <div className="bottom-create-wrap">
               <button
