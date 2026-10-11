@@ -11,12 +11,22 @@ const STEPS = [
 
 const MAX_COMMANDS = 5;
 
+const CATEGORIES = [
+  { value: "main", label: "Main", icon: "fa-house" },
+  { value: "download", label: "Download", icon: "fa-download" },
+  { value: "logo", label: "Logo", icon: "fa-image" },
+  { value: "media", label: "Media", icon: "fa-photo-film" },
+  { value: "tools", label: "Tools", icon: "fa-screwdriver-wrench" },
+];
+
 function defaultCommand() {
   return {
     command: "",
     aliase: "",
     desc: "",
     react: "",
+    category: "main", // 🔥 NEW
+    ownerOnly: false, // 🔥 NEW
     type: "simple",
     textConfig: {
       contentType: "text",
@@ -35,7 +45,7 @@ function defaultCommand() {
     sendWithImage: false,
     imageUrl: "",
     imageUrlKey: "",
-    isActive: true,
+    isActive: true, // 🔥 default true — hidden field
   };
 }
 
@@ -75,6 +85,8 @@ export default function CreateCommand() {
           setCmd({
             ...defaultCommand(),
             ...found,
+            category: found.category || "main",
+            ownerOnly: found.ownerOnly || false,
             aliase: (found.aliase || []).join(", "),
             apiConfig: {
               ...defaultCommand().apiConfig,
@@ -192,8 +204,10 @@ export default function CreateCommand() {
           .filter(Boolean),
         desc: cmd.desc,
         react: cmd.react,
+        category: cmd.category || "main", // 🔥 NEW
+        ownerOnly: !!cmd.ownerOnly, // 🔥 NEW
         type: cmd.type,
-        isActive: cmd.isActive,
+        isActive: true, // 🔥 හැමවිටම true
       };
 
       if (cmd.type === "simple") {
@@ -247,7 +261,6 @@ export default function CreateCommand() {
     return true;
   }
 
-  /* ==================== INSERT AT CURSOR ==================== */
   function insertAtTemplate(key) {
     const token = `{{${key}}}`;
 
@@ -276,7 +289,6 @@ export default function CreateCommand() {
     navigator.clipboard.writeText(token).catch(() => {});
   }
 
-  /* ==================== TEMPLATE RENDER ==================== */
   function renderTemplate(template, testData) {
     if (!template) return "";
     if (!testData) return template;
@@ -305,7 +317,6 @@ export default function CreateCommand() {
     });
   }
 
-  /* ==================== TEMPLATE VALIDATE ==================== */
   function validateTemplate(template, availableKeys = []) {
     const errors = [];
     const warnings = [];
@@ -363,7 +374,6 @@ export default function CreateCommand() {
     return { errors, warnings };
   }
 
-  /* ==================== COMPUTED ==================== */
   const templateValidation = validateTemplate(
     cmd.responseTemplate,
     cmd.apiConfig.extractedValues || []
@@ -398,7 +408,6 @@ export default function CreateCommand() {
     return "";
   })();
 
-  /* ==================== GROUP KEYS (fallback) ==================== */
   function groupTemplateKeys(keys) {
     const groups = [];
     const seen = new Set();
@@ -442,7 +451,6 @@ export default function CreateCommand() {
     return groups;
   }
 
-  // 🔥 FULL template groups — backend එකෙන් හෝ fallback
   const templateGroups = (() => {
     if (apiResult?.templateGroups?.length) {
       return apiResult.templateGroups;
@@ -450,10 +458,7 @@ export default function CreateCommand() {
     return groupTemplateKeys(cmd.apiConfig.extractedValues || []);
   })();
 
-  // 🔥 Image groups — templateGroups එකෙන් filter කරන්න
-  // (backend එකෙන් එවන templateGroups use කරන නිසා isArray හරියට එනවා)
   const imageGroups = (() => {
-    // Backend templateGroups එකේ image-like keys filter කරන්න
     const allGroups = apiResult?.templateGroups?.length
       ? apiResult.templateGroups
       : groupTemplateKeys(cmd.apiConfig.extractedValues || []);
@@ -466,16 +471,13 @@ export default function CreateCommand() {
     });
   })();
 
-  /* ==================== WHATSAPP-STYLE RENDER ==================== */
   function renderWhatsAppPreview(text) {
     if (!text) return [];
 
-    // Split by \n — preserve EVERY line (including empty)
     const lines = text.split("\n");
     const elements = [];
 
     lines.forEach((line, i) => {
-      // Empty line → render <br>
       if (line === "") {
         elements.push({ type: "br", key: `br-${i}` });
         return;
@@ -527,7 +529,6 @@ export default function CreateCommand() {
     return out;
   }
 
-  // 🔥 Render preview elements to JSX
   function renderPreviewElements(elements) {
     return elements.map((el, idx) => {
       if (el.type === "br") {
@@ -556,7 +557,6 @@ export default function CreateCommand() {
     });
   }
 
-  /* ==================== SAMPLE LOOKUP HELPER ==================== */
   function lookupSampleValue(path) {
     if (!apiResult?.ok) return "";
     const parts = String(path).split(".");
@@ -819,6 +819,163 @@ export default function CreateCommand() {
           padding-right: 42px;
         }
 
+        /* 🔥 CATEGORY SELECTOR — custom grid */
+        .category-grid {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 10px;
+        }
+        @media (max-width: 700px) {
+          .category-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 500px) {
+          .category-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .category-card {
+          padding: 14px 8px;
+          border-radius: 14px;
+          border: 1.5px solid rgba(255, 255, 255, 0.08);
+          background: rgba(0, 0, 0, 0.25);
+          cursor: pointer;
+          transition: all 0.25s ease;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+        }
+        .category-card:hover {
+          border-color: rgba(59, 130, 246, 0.4);
+          transform: translateY(-2px);
+        }
+        .category-card.active {
+          border-color: #3b82f6;
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(6, 182, 212, 0.08));
+          box-shadow: 0 0 25px rgba(59, 130, 246, 0.25);
+        }
+
+        .category-card .cat-icon {
+          width: 34px;
+          height: 34px;
+          border-radius: 10px;
+          background: rgba(59, 130, 246, 0.12);
+          border: 1px solid rgba(59, 130, 246, 0.25);
+          display: grid;
+          place-items: center;
+          color: #60a5fa;
+          font-size: 0.85rem;
+          transition: transform 0.3s ease;
+        }
+        .category-card:hover .cat-icon {
+          transform: scale(1.08) rotate(-5deg);
+        }
+        .category-card.active .cat-icon {
+          background: linear-gradient(135deg, #3b82f6, #06b6d4);
+          color: #000;
+          border-color: transparent;
+          box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .category-card .cat-label {
+          font-size: 0.68rem;
+          font-weight: 700;
+          color: rgba(255, 255, 255, 0.6);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .category-card.active .cat-label {
+          color: #fff;
+        }
+
+        /* 🔥 OWNER-ONLY TOGGLE ROW */
+        .owner-toggle-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 14px 18px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, rgba(168, 85, 247, 0.06), rgba(139, 92, 246, 0.04));
+          border: 1px solid rgba(168, 85, 247, 0.25);
+          cursor: pointer;
+          transition: all 0.25s ease;
+          min-height: 50px;
+        }
+        .owner-toggle-row:hover {
+          border-color: rgba(168, 85, 247, 0.5);
+          background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(139, 92, 246, 0.06));
+        }
+        .owner-toggle-row .toggle-info {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
+          flex: 1;
+        }
+        .owner-toggle-row .toggle-info > i {
+          color: #c084fc;
+          font-size: 0.95rem;
+          flex-shrink: 0;
+        }
+        .owner-toggle-row .toggle-info .toggle-text {
+          font-size: 0.85rem;
+          font-weight: 700;
+          color: rgba(255, 255, 255, 0.9);
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .owner-toggle-row .toggle-info .toggle-sub {
+          font-size: 0.68rem;
+          color: rgba(255, 255, 255, 0.4);
+          margin-top: 2px;
+          display: block;
+        }
+        .owner-badge {
+          background: linear-gradient(135deg, #a855f7, #c084fc);
+          color: #000;
+          font-size: 0.6rem;
+          font-weight: 800;
+          padding: 2px 7px;
+          border-radius: 20px;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+        }
+
+        /* PURPLE SWITCH for owner-only */
+        .switch-purple {
+          position: relative;
+          width: 46px;
+          height: 26px;
+          border-radius: 30px;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          flex-shrink: 0;
+        }
+        .switch-purple::after {
+          content: "";
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.7);
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .switch-purple.on {
+          background: linear-gradient(135deg, #a855f7, #c084fc);
+          border-color: transparent;
+          box-shadow: 0 0 18px rgba(168, 85, 247, 0.5);
+        }
+        .switch-purple.on::after {
+          left: calc(100% - 22px);
+          background: #fff;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
         /* TYPE SELECTOR */
         .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         @media (max-width: 500px) { .type-grid { grid-template-columns: 1fr; } }
@@ -873,36 +1030,7 @@ export default function CreateCommand() {
           color: rgba(255, 255, 255, 0.45);
         }
 
-        /* CHECKBOX ROW */
-        .checkbox-row {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 14px 16px;
-          border-radius: 12px;
-          background: rgba(0, 0, 0, 0.25);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          cursor: pointer;
-          font-size: 0.85rem;
-          transition: all 0.2s ease;
-        }
-        .checkbox-row:hover { border-color: rgba(59, 130, 246, 0.3); }
-        .checkbox-row input[type="checkbox"] {
-          accent-color: #3b82f6;
-          width: 18px;
-          height: 18px;
-          cursor: pointer;
-        }
-        .checkbox-row .label-text {
-          flex: 1;
-          text-transform: none;
-          letter-spacing: 0;
-          color: rgba(255, 255, 255, 0.75);
-          font-weight: 500;
-          font-size: 0.85rem;
-        }
-
-        /* TOGGLE */
+        /* TOGGLE (Has Query / Send with Image) */
         .toggle-row {
           display: flex;
           align-items: center;
@@ -1992,6 +2120,31 @@ export default function CreateCommand() {
               </div>
             </div>
 
+            {/* 🔥 CATEGORY SELECTOR */}
+            <div className="field">
+              <label>
+                <i className="fas fa-folder-tree" />
+                Category <span className="req">*</span>
+              </label>
+              <div className="category-grid">
+                {CATEGORIES.map((cat) => (
+                  <div
+                    key={cat.value}
+                    className={`category-card ${
+                      cmd.category === cat.value ? "active" : ""
+                    }`}
+                    onClick={() => upd({ category: cat.value })}
+                  >
+                    <div className="cat-icon">
+                      <i className={`fas ${cat.icon}`} />
+                    </div>
+                    <div className="cat-label">{cat.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 🔥 COMMAND TYPE */}
             <div className="field">
               <label>
                 <i className="fas fa-layer-group" />
@@ -2026,28 +2179,38 @@ export default function CreateCommand() {
               </div>
             </div>
 
+            {/* 🔥 OWNER-ONLY TOGGLE */}
             <div className="field" style={{ marginBottom: 0 }}>
-              <label
-                className="checkbox-row"
-                style={{
-                  textTransform: "none",
-                  letterSpacing: 0,
-                  marginBottom: 0,
-                }}
+              <div
+                className={`owner-toggle-row ${
+                  cmd.ownerOnly ? "on" : ""
+                }`}
+                onClick={() =>
+                  upd({ ownerOnly: !cmd.ownerOnly })
+                }
               >
-                <input
-                  type="checkbox"
-                  checked={cmd.isActive}
-                  onChange={(e) => upd({ isActive: e.target.checked })}
+                <div className="toggle-info">
+                  <i className="fas fa-user-shield" />
+                  <div>
+                    <div className="toggle-text">
+                      Owner Only
+                      {cmd.ownerOnly && (
+                        <span className="owner-badge">ACTIVE</span>
+                      )}
+                    </div>
+                    <div className="toggle-sub">
+                      {cmd.ownerOnly
+                        ? "මේ command එක bot owner ට විතරයි"
+                        : "හැමෝටම use කරන්න පුළුවන්"}
+                    </div>
+                  </div>
+                </div>
+                <div
+                  className={`switch-purple ${
+                    cmd.ownerOnly ? "on" : ""
+                  }`}
                 />
-                <span className="label-text">
-                  <i
-                    className="fas fa-circle-check"
-                    style={{ color: "#4ade80", marginRight: 6 }}
-                  />
-                  Active — bot respond කරයි
-                </span>
-              </label>
+              </div>
             </div>
           </>
         )}
@@ -2723,7 +2886,7 @@ export default function CreateCommand() {
                     </label>
 
                     <div className="fields-hint">
-                      <i className="fas fa-info-circle" />
+                      <i className="fas fa-circle-info" />
                       <div>
                         Array field එකක් (උදා: <code>{"{{results.title}}"}</code>) click කරාම expand වෙනවා. එකෙන් එකක් click කරාම template එකට insert වෙනවා.
                       </div>
@@ -2943,7 +3106,6 @@ export default function CreateCommand() {
                             select
                           </label>
 
-                          {/* 🔥 image dropdown groups */}
                           {imageGroups.length > 0 && (
                             <div className="fields-wrap">
                               {imageGroups.map((g, gi) => {
