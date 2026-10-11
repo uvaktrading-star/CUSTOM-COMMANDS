@@ -25,8 +25,8 @@ function defaultCommand() {
     aliase: "",
     desc: "",
     react: "",
-    category: "main", // 🔥 NEW
-    ownerOnly: false, // 🔥 NEW
+    category: "main",
+    ownerOnly: false,
     type: "simple",
     textConfig: {
       contentType: "text",
@@ -45,7 +45,7 @@ function defaultCommand() {
     sendWithImage: false,
     imageUrl: "",
     imageUrlKey: "",
-    isActive: true, // 🔥 default true — hidden field
+    isActive: true,
   };
 }
 
@@ -63,10 +63,29 @@ export default function CreateCommand() {
   const [loadingExisting, setLoadingExisting] = useState(!!editName);
   const [existingCommands, setExistingCommands] = useState([]);
 
+  // 🔥 category dropdown state
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const categoryRef = useRef(null);
+
   const [expandedKeys, setExpandedKeys] = useState({});
   const [expandedImageKeys, setExpandedImageKeys] = useState({});
 
   const templateRef = useRef(null);
+
+  /* ---------- close category dropdown on outside click ---------- */
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (
+        categoryRef.current &&
+        !categoryRef.current.contains(e.target)
+      ) {
+        setCategoryOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (!editName) return;
@@ -204,10 +223,10 @@ export default function CreateCommand() {
           .filter(Boolean),
         desc: cmd.desc,
         react: cmd.react,
-        category: cmd.category || "main", // 🔥 NEW
-        ownerOnly: !!cmd.ownerOnly, // 🔥 NEW
+        category: cmd.category || "main",
+        ownerOnly: !!cmd.ownerOnly,
         type: cmd.type,
-        isActive: true, // 🔥 හැමවිටම true
+        isActive: true,
       };
 
       if (cmd.type === "simple") {
@@ -574,6 +593,10 @@ export default function CreateCommand() {
     return String(cur);
   }
 
+  /* ---------- selected category object ---------- */
+  const selectedCategory =
+    CATEGORIES.find((c) => c.value === cmd.category) || CATEGORIES[0];
+
   if (loadingExisting) {
     return (
       <div className="wiz-loading">
@@ -819,135 +842,286 @@ export default function CreateCommand() {
           padding-right: 42px;
         }
 
-        /* 🔥 CATEGORY SELECTOR — custom grid */
-        .category-grid {
-          display: grid;
-          grid-template-columns: repeat(5, 1fr);
-          gap: 10px;
-        }
-        @media (max-width: 700px) {
-          .category-grid { grid-template-columns: repeat(3, 1fr); }
-        }
-        @media (max-width: 500px) {
-          .category-grid { grid-template-columns: repeat(2, 1fr); }
+        /* ======================================================
+           🔥 CATEGORY DROPDOWN
+           ====================================================== */
+        .category-dropdown {
+          position: relative;
         }
 
-        .category-card {
-          padding: 14px 8px;
+        .category-trigger {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 14px 18px;
+          background: rgba(0, 0, 0, 0.3);
+          border: 1.5px solid rgba(255, 255, 255, 0.06);
           border-radius: 14px;
-          border: 1.5px solid rgba(255, 255, 255, 0.08);
-          background: rgba(0, 0, 0, 0.25);
+          color: #fff;
+          font-family: inherit;
+          font-size: 0.88rem;
           cursor: pointer;
           transition: all 0.25s ease;
-          text-align: center;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 6px;
+          text-align: left;
         }
-        .category-card:hover {
+        .category-trigger:hover {
           border-color: rgba(59, 130, 246, 0.4);
-          transform: translateY(-2px);
+          background: rgba(0, 0, 0, 0.4);
         }
-        .category-card.active {
+        .category-trigger.open {
           border-color: #3b82f6;
-          background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(6, 182, 212, 0.08));
-          box-shadow: 0 0 25px rgba(59, 130, 246, 0.25);
+          background: rgba(0, 0, 0, 0.45);
+          box-shadow: 0 0 25px rgba(59, 130, 246, 0.15);
         }
 
-        .category-card .cat-icon {
-          width: 34px;
-          height: 34px;
+        .category-trigger .cat-current-icon {
+          width: 36px;
+          height: 36px;
           border-radius: 10px;
+          background: linear-gradient(135deg, #3b82f6, #06b6d4);
+          display: grid;
+          place-items: center;
+          color: #000;
+          font-size: 0.9rem;
+          flex-shrink: 0;
+          box-shadow: 0 0 15px rgba(59, 130, 246, 0.35);
+        }
+
+        .category-trigger .cat-current-label {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .category-trigger .cat-current-label .main {
+          font-size: 0.9rem;
+          font-weight: 700;
+          color: #fff;
+        }
+        .category-trigger .cat-current-label .sub {
+          font-size: 0.65rem;
+          color: rgba(255, 255, 255, 0.4);
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          font-weight: 600;
+        }
+
+        .category-trigger .cat-chevron {
+          font-size: 0.75rem;
+          color: rgba(255, 255, 255, 0.4);
+          transition: transform 0.3s ease;
+          flex-shrink: 0;
+        }
+        .category-trigger.open .cat-chevron {
+          transform: rotate(180deg);
+          color: #60a5fa;
+        }
+
+        /* menu */
+        .category-menu {
+          position: absolute;
+          top: calc(100% + 8px);
+          left: 0;
+          right: 0;
+          background: rgba(10, 15, 30, 0.98);
+          backdrop-filter: blur(22px);
+          border: 1px solid rgba(0, 150, 255, 0.25);
+          border-radius: 14px;
+          padding: 8px;
+          z-index: 50;
+          box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6),
+                      0 0 40px rgba(59, 130, 246, 0.08);
+          animation: dropdownIn 0.2s ease;
+          max-height: 320px;
+          overflow-y: auto;
+        }
+        .category-menu::-webkit-scrollbar { width: 5px; }
+        .category-menu::-webkit-scrollbar-thumb {
+          background: rgba(59, 130, 246, 0.3);
+          border-radius: 3px;
+        }
+
+        @keyframes dropdownIn {
+          from { opacity: 0; transform: translateY(-6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .category-option {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 11px 14px;
+          border-radius: 10px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          border: 1px solid transparent;
+        }
+        .category-option:hover {
+          background: rgba(59, 130, 246, 0.08);
+          border-color: rgba(59, 130, 246, 0.2);
+        }
+        .category-option.selected {
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(6, 182, 212, 0.08));
+          border-color: rgba(59, 130, 246, 0.35);
+        }
+
+        .category-option .opt-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 9px;
           background: rgba(59, 130, 246, 0.12);
           border: 1px solid rgba(59, 130, 246, 0.25);
           display: grid;
           place-items: center;
           color: #60a5fa;
-          font-size: 0.85rem;
-          transition: transform 0.3s ease;
+          font-size: 0.8rem;
+          flex-shrink: 0;
+          transition: all 0.2s ease;
         }
-        .category-card:hover .cat-icon {
-          transform: scale(1.08) rotate(-5deg);
+        .category-option:hover .opt-icon {
+          transform: scale(1.08);
         }
-        .category-card.active .cat-icon {
+        .category-option.selected .opt-icon {
           background: linear-gradient(135deg, #3b82f6, #06b6d4);
           color: #000;
           border-color: transparent;
-          box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+          box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
         }
 
-        .category-card .cat-label {
-          font-size: 0.68rem;
-          font-weight: 700;
-          color: rgba(255, 255, 255, 0.6);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
+        .category-option .opt-label {
+          flex: 1;
+          font-size: 0.88rem;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.85);
         }
-        .category-card.active .cat-label {
+        .category-option.selected .opt-label {
           color: #fff;
         }
-
-        /* 🔥 OWNER-ONLY TOGGLE ROW */
-        .owner-toggle-row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          padding: 14px 18px;
-          border-radius: 14px;
-          background: linear-gradient(135deg, rgba(168, 85, 247, 0.06), rgba(139, 92, 246, 0.04));
-          border: 1px solid rgba(168, 85, 247, 0.25);
-          cursor: pointer;
-          transition: all 0.25s ease;
-          min-height: 50px;
-        }
-        .owner-toggle-row:hover {
-          border-color: rgba(168, 85, 247, 0.5);
-          background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(139, 92, 246, 0.06));
-        }
-        .owner-toggle-row .toggle-info {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          min-width: 0;
-          flex: 1;
-        }
-        .owner-toggle-row .toggle-info > i {
-          color: #c084fc;
-          font-size: 0.95rem;
-          flex-shrink: 0;
-        }
-        .owner-toggle-row .toggle-info .toggle-text {
+        .category-option .opt-check {
+          color: #4ade80;
           font-size: 0.85rem;
-          font-weight: 700;
-          color: rgba(255, 255, 255, 0.9);
+          opacity: 0;
+          transition: opacity 0.2s ease;
+        }
+        .category-option.selected .opt-check {
+          opacity: 1;
+        }
+
+        /* ======================================================
+           🔥 OWNER-ONLY — modern styled
+           ====================================================== */
+        .owner-panel {
+          position: relative;
+          padding: 18px;
+          border-radius: 16px;
+          background: linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(139, 92, 246, 0.03));
+          border: 1.5px solid rgba(168, 85, 247, 0.25);
+          transition: all 0.3s ease;
+          cursor: pointer;
+          overflow: hidden;
+        }
+        .owner-panel::before {
+          content: "";
+          position: absolute;
+          top: -50%;
+          right: -50%;
+          width: 200%;
+          height: 200%;
+          background: radial-gradient(circle, rgba(168, 85, 247, 0.08), transparent 60%);
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          pointer-events: none;
+        }
+        .owner-panel:hover {
+          border-color: rgba(168, 85, 247, 0.5);
+          background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(139, 92, 246, 0.05));
+        }
+        .owner-panel:hover::before {
+          opacity: 1;
+        }
+        .owner-panel.active {
+          border-color: rgba(168, 85, 247, 0.6);
+          background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(139, 92, 246, 0.08));
+          box-shadow: 0 0 40px rgba(168, 85, 247, 0.2),
+                      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .owner-panel-inner {
+          position: relative;
+          z-index: 1;
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 14px;
         }
-        .owner-toggle-row .toggle-info .toggle-sub {
-          font-size: 0.68rem;
-          color: rgba(255, 255, 255, 0.4);
-          margin-top: 2px;
-          display: block;
+
+        .owner-icon-box {
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          background: rgba(168, 85, 247, 0.12);
+          border: 1px solid rgba(168, 85, 247, 0.3);
+          display: grid;
+          place-items: center;
+          color: #c084fc;
+          font-size: 1.15rem;
+          flex-shrink: 0;
+          transition: all 0.3s ease;
         }
-        .owner-badge {
+        .owner-panel:hover .owner-icon-box {
+          transform: scale(1.05) rotate(-5deg);
+        }
+        .owner-panel.active .owner-icon-box {
           background: linear-gradient(135deg, #a855f7, #c084fc);
           color: #000;
-          font-size: 0.6rem;
+          border-color: transparent;
+          box-shadow: 0 0 25px rgba(168, 85, 247, 0.5);
+        }
+
+        .owner-info {
+          flex: 1;
+          min-width: 0;
+        }
+        .owner-title-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 3px;
+        }
+        .owner-title {
+          font-size: 0.9rem;
           font-weight: 800;
-          padding: 2px 7px;
+          color: #fff;
+          letter-spacing: -0.2px;
+        }
+        .owner-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2px 8px;
           border-radius: 20px;
+          background: linear-gradient(135deg, #a855f7, #c084fc);
+          color: #000;
+          font-size: 0.58rem;
+          font-weight: 800;
           letter-spacing: 0.5px;
           text-transform: uppercase;
         }
+        .owner-sub {
+          font-size: 0.72rem;
+          color: rgba(255, 255, 255, 0.45);
+          line-height: 1.4;
+        }
+        .owner-panel.active .owner-sub {
+          color: rgba(255, 255, 255, 0.65);
+        }
 
-        /* PURPLE SWITCH for owner-only */
+        /* PURPLE SWITCH */
         .switch-purple {
           position: relative;
-          width: 46px;
-          height: 26px;
+          width: 48px;
+          height: 28px;
           border-radius: 30px;
           background: rgba(255, 255, 255, 0.08);
           border: 1px solid rgba(255, 255, 255, 0.12);
@@ -959,21 +1133,22 @@ export default function CreateCommand() {
           position: absolute;
           top: 2px;
           left: 2px;
-          width: 20px;
-          height: 20px;
+          width: 22px;
+          height: 22px;
           border-radius: 50%;
           background: rgba(255, 255, 255, 0.7);
           transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
         }
         .switch-purple.on {
           background: linear-gradient(135deg, #a855f7, #c084fc);
           border-color: transparent;
-          box-shadow: 0 0 18px rgba(168, 85, 247, 0.5);
+          box-shadow: 0 0 20px rgba(168, 85, 247, 0.55);
         }
         .switch-purple.on::after {
-          left: calc(100% - 22px);
+          left: calc(100% - 24px);
           background: #fff;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
         }
 
         /* TYPE SELECTOR */
@@ -1030,7 +1205,7 @@ export default function CreateCommand() {
           color: rgba(255, 255, 255, 0.45);
         }
 
-        /* TOGGLE (Has Query / Send with Image) */
+        /* TOGGLE ROW */
         .toggle-row {
           display: flex;
           align-items: center;
@@ -2120,27 +2295,96 @@ export default function CreateCommand() {
               </div>
             </div>
 
-            {/* 🔥 CATEGORY SELECTOR */}
+            {/* 🔥 CATEGORY DROPDOWN */}
             <div className="field">
               <label>
                 <i className="fas fa-folder-tree" />
                 Category <span className="req">*</span>
               </label>
-              <div className="category-grid">
-                {CATEGORIES.map((cat) => (
-                  <div
-                    key={cat.value}
-                    className={`category-card ${
-                      cmd.category === cat.value ? "active" : ""
-                    }`}
-                    onClick={() => upd({ category: cat.value })}
-                  >
-                    <div className="cat-icon">
-                      <i className={`fas ${cat.icon}`} />
-                    </div>
-                    <div className="cat-label">{cat.label}</div>
+
+              <div className="category-dropdown" ref={categoryRef}>
+                <button
+                  type="button"
+                  className={`category-trigger ${
+                    categoryOpen ? "open" : ""
+                  }`}
+                  onClick={() => setCategoryOpen((v) => !v)}
+                >
+                  <div className="cat-current-icon">
+                    <i className={`fas ${selectedCategory.icon}`} />
                   </div>
-                ))}
+                  <div className="cat-current-label">
+                    <span className="main">{selectedCategory.label}</span>
+                    <span className="sub">Selected Category</span>
+                  </div>
+                  <i className="fas fa-chevron-down cat-chevron" />
+                </button>
+
+                {categoryOpen && (
+                  <div className="category-menu">
+                    {CATEGORIES.map((cat) => {
+                      const isSelected = cmd.category === cat.value;
+                      return (
+                        <div
+                          key={cat.value}
+                          className={`category-option ${
+                            isSelected ? "selected" : ""
+                          }`}
+                          onClick={() => {
+                            upd({ category: cat.value });
+                            setCategoryOpen(false);
+                          }}
+                        >
+                          <div className="opt-icon">
+                            <i className={`fas ${cat.icon}`} />
+                          </div>
+                          <div className="opt-label">{cat.label}</div>
+                          <i className="fas fa-check opt-check" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 🔥 OWNER-ONLY — ලස්සන panel */}
+            <div className="field">
+              <div
+                className={`owner-panel ${
+                  cmd.ownerOnly ? "active" : ""
+                }`}
+                onClick={() => upd({ ownerOnly: !cmd.ownerOnly })}
+              >
+                <div className="owner-panel-inner">
+                  <div className="owner-icon-box">
+                    <i className="fas fa-user-shield" />
+                  </div>
+                  <div className="owner-info">
+                    <div className="owner-title-row">
+                      <span className="owner-title">Owner Only</span>
+                      {cmd.ownerOnly && (
+                        <span className="owner-badge">
+                          <i
+                            className="fas fa-lock"
+                            style={{ fontSize: "0.5rem" }}
+                          />
+                          ON
+                        </span>
+                      )}
+                    </div>
+                    <div className="owner-sub">
+                      {cmd.ownerOnly
+                        ? "🔒 මේ command එක bot owner ට විතරයි"
+                        : "හැමෝටම use කරන්න පුළුවන්"}
+                    </div>
+                  </div>
+                  <div
+                    className={`switch-purple ${
+                      cmd.ownerOnly ? "on" : ""
+                    }`}
+                  />
+                </div>
               </div>
             </div>
 
@@ -2176,40 +2420,6 @@ export default function CreateCommand() {
                   <div className="type-name">API</div>
                   <div className="type-desc">Dynamic from external API</div>
                 </div>
-              </div>
-            </div>
-
-            {/* 🔥 OWNER-ONLY TOGGLE */}
-            <div className="field" style={{ marginBottom: 0 }}>
-              <div
-                className={`owner-toggle-row ${
-                  cmd.ownerOnly ? "on" : ""
-                }`}
-                onClick={() =>
-                  upd({ ownerOnly: !cmd.ownerOnly })
-                }
-              >
-                <div className="toggle-info">
-                  <i className="fas fa-user-shield" />
-                  <div>
-                    <div className="toggle-text">
-                      Owner Only
-                      {cmd.ownerOnly && (
-                        <span className="owner-badge">ACTIVE</span>
-                      )}
-                    </div>
-                    <div className="toggle-sub">
-                      {cmd.ownerOnly
-                        ? "මේ command එක bot owner ට විතරයි"
-                        : "හැමෝටම use කරන්න පුළුවන්"}
-                    </div>
-                  </div>
-                </div>
-                <div
-                  className={`switch-purple ${
-                    cmd.ownerOnly ? "on" : ""
-                  }`}
-                />
               </div>
             </div>
           </>
