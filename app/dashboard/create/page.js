@@ -425,6 +425,25 @@ export default function CreateCommand() {
     return "";
   })();
 
+  /* ======================================================
+     🔥 NEW: Live preview user bubble එකේ command + default query
+     ====================================================== */
+  const previewUserMessage = (() => {
+    const baseCmd = `.${cmd.command || "(no name)"}`;
+
+    if (cmd.type === "API" && cmd.apiConfig.hasQuery) {
+      // පළමු query එකේ default value එක ගන්න
+      const firstQuery = (cmd.apiConfig.queries || []).find(
+        (q) => q && q.key && q.defaultValue
+      );
+      if (firstQuery && firstQuery.defaultValue.trim()) {
+        return `${baseCmd} ${firstQuery.defaultValue.trim()}`;
+      }
+    }
+
+    return baseCmd;
+  })();
+
   function groupTemplateKeys(keys) {
     const groups = [];
     const seen = new Set();
@@ -835,9 +854,6 @@ export default function CreateCommand() {
           padding-right: 42px;
         }
 
-        /* ======================================================
-           🔥 CATEGORY DROPDOWN — INLINE EXPAND (pushes content)
-           ====================================================== */
         .category-dropdown {
           position: relative;
         }
@@ -912,7 +928,6 @@ export default function CreateCommand() {
           color: #60a5fa;
         }
 
-        /* menu — inline, pushes content below */
         .category-menu {
           margin-top: 8px;
           background: rgba(10, 15, 30, 0.82);
@@ -1001,9 +1016,6 @@ export default function CreateCommand() {
           opacity: 1;
         }
 
-        /* ======================================================
-           🔥 OWNER-ONLY — unified blue theme
-           ====================================================== */
         .owner-panel {
           position: relative;
           padding: 18px;
@@ -1109,7 +1121,6 @@ export default function CreateCommand() {
           color: rgba(255, 255, 255, 0.65);
         }
 
-        /* BLUE SWITCH */
         .switch-blue {
           position: relative;
           width: 48px;
@@ -2791,8 +2802,9 @@ export default function CreateCommand() {
                 Live Preview
               </label>
               <div className="chat-window">
+                {/* 🔥 FIX: preview user bubble shows .command + default query */}
                 <div className="chat-bubble user">
-                  .{cmd.command || "(no name)"}
+                  {previewUserMessage}
                 </div>
 
                 {cmd.type === "simple" ? (
