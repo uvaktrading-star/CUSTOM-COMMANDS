@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { connectDB, Command } from "@/lib/db";
+import { getCommandModel } from "@/lib/db";
 
 const MAX_COMMANDS = 5;
 
@@ -180,7 +180,8 @@ export async function GET(req) {
       );
     }
 
-    await connectDB();
+    /* 🔥 Commands Model — Cluster 2 එකෙන් */
+    const Command = await getCommandModel();
 
     const commands = await Command.find({ userId })
       .sort({ createdAt: -1 })
@@ -234,7 +235,8 @@ export async function POST(req) {
       );
     }
 
-    await connectDB();
+    /* 🔥 Commands Model — Cluster 2 එකෙන් */
+    const Command = await getCommandModel();
 
     /* ---------- normalize ---------- */
     const payload = normalizePayload(body, userId);
@@ -361,7 +363,8 @@ export async function DELETE(req) {
       );
     }
 
-    await connectDB();
+    /* 🔥 Commands Model — Cluster 2 එකෙන් */
+    const Command = await getCommandModel();
 
     const deleted = await Command.findOneAndDelete({
       userId,
