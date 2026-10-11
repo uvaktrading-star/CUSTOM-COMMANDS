@@ -843,10 +843,14 @@ export default function CreateCommand() {
         }
 
         /* ======================================================
-           🔥 CATEGORY DROPDOWN
+           🔥 CATEGORY DROPDOWN — FIXED & REFINED
            ====================================================== */
         .category-dropdown {
           position: relative;
+          z-index: 30;
+        }
+        .category-dropdown.open {
+          z-index: 100;
         }
 
         .category-trigger {
@@ -919,20 +923,21 @@ export default function CreateCommand() {
           color: #60a5fa;
         }
 
-        /* menu */
+        /* menu — lighter glass, proper layering */
         .category-menu {
           position: absolute;
           top: calc(100% + 8px);
           left: 0;
           right: 0;
-          background: rgba(10, 15, 30, 0.98);
-          backdrop-filter: blur(22px);
-          border: 1px solid rgba(0, 150, 255, 0.25);
+          background: rgba(10, 15, 30, 0.82);
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+          border: 1px solid rgba(0, 150, 255, 0.22);
           border-radius: 14px;
           padding: 8px;
-          z-index: 50;
-          box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6),
-                      0 0 40px rgba(59, 130, 246, 0.08);
+          z-index: 100;
+          box-shadow: 0 25px 50px rgba(0, 0, 0, 0.55),
+                      0 0 40px rgba(59, 130, 246, 0.06);
           animation: dropdownIn 0.2s ease;
           max-height: 320px;
           overflow-y: auto;
@@ -1010,14 +1015,14 @@ export default function CreateCommand() {
         }
 
         /* ======================================================
-           🔥 OWNER-ONLY — modern styled
+           🔥 OWNER-ONLY — same theme as the rest
            ====================================================== */
         .owner-panel {
           position: relative;
           padding: 18px;
           border-radius: 16px;
-          background: linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(139, 92, 246, 0.03));
-          border: 1.5px solid rgba(168, 85, 247, 0.25);
+          background: rgba(0, 0, 0, 0.25);
+          border: 1.5px solid rgba(255, 255, 255, 0.08);
           transition: all 0.3s ease;
           cursor: pointer;
           overflow: hidden;
@@ -1029,22 +1034,22 @@ export default function CreateCommand() {
           right: -50%;
           width: 200%;
           height: 200%;
-          background: radial-gradient(circle, rgba(168, 85, 247, 0.08), transparent 60%);
+          background: radial-gradient(circle, rgba(59, 130, 246, 0.08), transparent 60%);
           opacity: 0;
           transition: opacity 0.3s ease;
           pointer-events: none;
         }
         .owner-panel:hover {
-          border-color: rgba(168, 85, 247, 0.5);
-          background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(139, 92, 246, 0.05));
+          border-color: rgba(59, 130, 246, 0.4);
+          background: rgba(0, 0, 0, 0.35);
         }
         .owner-panel:hover::before {
           opacity: 1;
         }
         .owner-panel.active {
-          border-color: rgba(168, 85, 247, 0.6);
-          background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(139, 92, 246, 0.08));
-          box-shadow: 0 0 40px rgba(168, 85, 247, 0.2),
+          border-color: rgba(59, 130, 246, 0.55);
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(6, 182, 212, 0.06));
+          box-shadow: 0 0 40px rgba(59, 130, 246, 0.18),
                       inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
 
@@ -1060,11 +1065,11 @@ export default function CreateCommand() {
           width: 48px;
           height: 48px;
           border-radius: 14px;
-          background: rgba(168, 85, 247, 0.12);
-          border: 1px solid rgba(168, 85, 247, 0.3);
+          background: rgba(59, 130, 246, 0.12);
+          border: 1px solid rgba(59, 130, 246, 0.3);
           display: grid;
           place-items: center;
-          color: #c084fc;
+          color: #60a5fa;
           font-size: 1.15rem;
           flex-shrink: 0;
           transition: all 0.3s ease;
@@ -1073,10 +1078,10 @@ export default function CreateCommand() {
           transform: scale(1.05) rotate(-5deg);
         }
         .owner-panel.active .owner-icon-box {
-          background: linear-gradient(135deg, #a855f7, #c084fc);
+          background: linear-gradient(135deg, #3b82f6, #06b6d4);
           color: #000;
           border-color: transparent;
-          box-shadow: 0 0 25px rgba(168, 85, 247, 0.5);
+          box-shadow: 0 0 25px rgba(59, 130, 246, 0.5);
         }
 
         .owner-info {
@@ -1101,7 +1106,7 @@ export default function CreateCommand() {
           gap: 4px;
           padding: 2px 8px;
           border-radius: 20px;
-          background: linear-gradient(135deg, #a855f7, #c084fc);
+          background: linear-gradient(135deg, #3b82f6, #06b6d4);
           color: #000;
           font-size: 0.58rem;
           font-weight: 800;
@@ -1117,8 +1122,8 @@ export default function CreateCommand() {
           color: rgba(255, 255, 255, 0.65);
         }
 
-        /* PURPLE SWITCH */
-        .switch-purple {
+        /* BLUE SWITCH (same as other toggles) */
+        .switch-blue {
           position: relative;
           width: 48px;
           height: 28px;
@@ -1128,7 +1133,7 @@ export default function CreateCommand() {
           transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
           flex-shrink: 0;
         }
-        .switch-purple::after {
+        .switch-blue::after {
           content: "";
           position: absolute;
           top: 2px;
@@ -1140,12 +1145,12 @@ export default function CreateCommand() {
           transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
           box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
         }
-        .switch-purple.on {
-          background: linear-gradient(135deg, #a855f7, #c084fc);
+        .switch-blue.on {
+          background: linear-gradient(135deg, #3b82f6, #06b6d4);
           border-color: transparent;
-          box-shadow: 0 0 20px rgba(168, 85, 247, 0.55);
+          box-shadow: 0 0 20px rgba(59, 130, 246, 0.55);
         }
-        .switch-purple.on::after {
+        .switch-blue.on::after {
           left: calc(100% - 24px);
           background: #fff;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
@@ -2302,7 +2307,12 @@ export default function CreateCommand() {
                 Category <span className="req">*</span>
               </label>
 
-              <div className="category-dropdown" ref={categoryRef}>
+              <div
+                className={`category-dropdown ${
+                  categoryOpen ? "open" : ""
+                }`}
+                ref={categoryRef}
+              >
                 <button
                   type="button"
                   className={`category-trigger ${
@@ -2348,7 +2358,7 @@ export default function CreateCommand() {
               </div>
             </div>
 
-            {/* 🔥 OWNER-ONLY — ලස්සන panel */}
+            {/* 🔥 OWNER-ONLY — unified theme */}
             <div className="field">
               <div
                 className={`owner-panel ${
@@ -2380,7 +2390,7 @@ export default function CreateCommand() {
                     </div>
                   </div>
                   <div
-                    className={`switch-purple ${
+                    className={`switch-blue ${
                       cmd.ownerOnly ? "on" : ""
                     }`}
                   />
