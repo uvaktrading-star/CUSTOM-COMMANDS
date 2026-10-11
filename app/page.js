@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const API_URL = "https://zanta-web-auth.vercel.app/api/auth";
+const CHECK_API = "/api/check";
+const AUTH_API = "https://zanta-web-auth.vercel.app/api/auth";
+const WHATSAPP_BUY = "http://wa.me/+94771810698?text=*Buy+Paid*";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,6 +16,8 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [glowing, setGlowing] = useState(false);
+  const [showPaidPopup, setShowPaidPopup] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState("");
 
   /* ---------- Stars background ---------- */
   useEffect(() => {
@@ -65,7 +69,7 @@ export default function LoginPage() {
   async function handleLogin() {
     setError("");
 
-    const id = botId.trim();
+    const id = botId.trim().replace(/\D/g, "");
     const password = botPass.trim();
 
     if (!id || !password) {
@@ -74,27 +78,80 @@ export default function LoginPage() {
     }
 
     setLoading(true);
+    setCheckingStatus("Verifying account...");
 
     try {
-      const response = await fetch(API_URL, {
+      /* ==================================================
+         STEP 1: Check if user is PAID via /api/check
+         ================================================== */
+      setCheckingStatus("Checking subscription...");
+
+      const checkRes = await fetch(CHECK_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, password }),
+      });
+
+      let checkData = {};
+      try {
+        checkData = await checkRes.json();
+      } catch {
+        checkData = {};
+      }
+
+      /* ---------- Not paid → show popup ---------- */
+      if (!checkData.success || !checkData.paid) {
+        // "user not found" / "invalid password" වගේ errors තියෙනවා නම්
+        // ඒවා error message විදියට පෙන්නන්න
+        const isCredentialError =
+          checkRes.status === 401 ||
+          checkRes.status === 404 ||
+          /not found|invalid password/i.test(checkData.error || "");
+
+        if (isCredentialError) {
+          setError(checkData.error || "Invalid credentials!");
+          setLoading(false);
+          setCheckingStatus("");
+          return;
+        }
+
+        // ඉතුරු ඒවා (free, unpaid, etc.) → paid popup එක
+        setLoading(false);
+        setCheckingStatus("");
+        setShowPaidPopup(true);
+        return;
+      }
+
+      /* ==================================================
+         STEP 2: User is PAID → call AUTH API to login
+         ================================================== */
+      setCheckingStatus("Signing you in...");
+
+      const authRes = await fetch(AUTH_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, password, action: "login" }),
       });
-      const data = await response.json();
 
-      if (data.success) {
+      const authData = await authRes.json();
+
+      if (authData.success) {
         localStorage.setItem("bot_id", id);
         localStorage.setItem("bot_pass", password);
-        localStorage.setItem("bot_settings", JSON.stringify(data.settings));
+        localStorage.setItem(
+          "bot_settings",
+          JSON.stringify(authData.settings || checkData.settings || {})
+        );
         router.push("/dashboard");
       } else {
-        setError(data.error || "Invalid credentials!");
+        setError(authData.error || "Invalid credentials!");
         setLoading(false);
+        setCheckingStatus("");
       }
     } catch {
       setError("Connection Error! Please try again.");
       setLoading(false);
+      setCheckingStatus("");
     }
   }
 
@@ -421,6 +478,203 @@ export default function LoginPage() {
         }
         .back-link:hover { color: #3b82f6; }
 
+        /* CHECKING STATUS */
+        .checking-status {
+          color: #60a5fa;
+          font-size: 0.72rem;
+          margin-top: 10px;
+          font-weight: 600;
+          letter-spacing: 1px;
+          animation: pulseText 1.5s infinite ease-in-out;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .checking-status i {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
+        /* ==================================================
+           PAID POPUP MODAL
+           ================================================== */
+        .modal-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 9999;
+          background: rgba(0, 0, 0, 0.75);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        .modal-card {
+          position: relative;
+          width: 100%;
+          max-width: 420px;
+          background: linear-gradient(160deg, rgba(15, 25, 45, 0.98), rgba(8, 15, 30, 0.98));
+          border: 1px solid rgba(0, 150, 255, 0.25);
+          border-radius: 28px;
+          padding: 40px 28px 32px 28px;
+          text-align: center;
+          box-shadow:
+            0 30px 80px rgba(0, 0, 0, 0.8),
+            0 0 60px rgba(59, 130, 246, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+          animation: modalIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          overflow: hidden;
+        }
+        @keyframes modalIn {
+          from { opacity: 0; transform: scale(0.85) translateY(20px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .modal-card::before {
+          content: "";
+          position: absolute;
+          top: -100px;
+          right: -100px;
+          width: 250px;
+          height: 250px;
+          background: radial-gradient(circle, rgba(239, 68, 68, 0.15), transparent 70%);
+          pointer-events: none;
+        }
+
+        .modal-icon {
+          position: relative;
+          width: 90px;
+          height: 90px;
+          margin: 0 auto 20px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.1));
+          border: 2px solid rgba(239, 68, 68, 0.4);
+          display: grid;
+          place-items: center;
+          color: #f87171;
+          font-size: 2.2rem;
+          box-shadow: 0 0 40px rgba(239, 68, 68, 0.3);
+          animation: pulseLock 2s ease-in-out infinite;
+        }
+        @keyframes pulseLock {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 40px rgba(239, 68, 68, 0.3); }
+          50% { transform: scale(1.05); box-shadow: 0 0 60px rgba(239, 68, 68, 0.5); }
+        }
+
+        .modal-title {
+          font-size: 1.5rem;
+          font-weight: 900;
+          letter-spacing: -0.5px;
+          margin-bottom: 8px;
+          background: linear-gradient(135deg, #f87171, #ef4444);
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+        }
+
+        .modal-subtitle {
+          font-size: 0.85rem;
+          color: rgba(255, 255, 255, 0.6);
+          line-height: 1.6;
+          margin-bottom: 24px;
+          padding: 0 8px;
+        }
+
+        .modal-divider {
+          width: 60px;
+          height: 2px;
+          margin: 0 auto 22px;
+          background: linear-gradient(90deg, transparent, #ef4444, transparent);
+          border-radius: 2px;
+        }
+
+        .btn-whatsapp {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          width: 100%;
+          padding: 18px 24px;
+          border-radius: 60px;
+          font-weight: 800;
+          font-size: 0.85rem;
+          font-family: var(--font-inter), "Inter", sans-serif;
+          text-transform: uppercase;
+          letter-spacing: 1.5px;
+          background: linear-gradient(135deg, #25d366, #128c7e);
+          color: #ffffff;
+          text-decoration: none;
+          cursor: pointer;
+          border: none;
+          box-shadow: 0 4px 25px rgba(37, 211, 102, 0.35);
+          transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          position: relative;
+          overflow: hidden;
+        }
+        .btn-whatsapp::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+          transition: left 0.6s ease;
+        }
+        .btn-whatsapp:hover {
+          transform: translateY(-3px) scale(1.02);
+          box-shadow: 0 12px 40px rgba(37, 211, 102, 0.55);
+        }
+        .btn-whatsapp:hover::before {
+          left: 100%;
+        }
+        .btn-whatsapp i {
+          font-size: 1.1rem;
+        }
+
+        .btn-close {
+          margin-top: 14px;
+          background: transparent;
+          border: none;
+          color: rgba(255, 255, 255, 0.35);
+          font-size: 0.75rem;
+          font-family: inherit;
+          cursor: pointer;
+          padding: 8px 16px;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+          font-weight: 600;
+          transition: color 0.3s ease;
+        }
+        .btn-close:hover {
+          color: rgba(255, 255, 255, 0.7);
+        }
+
+        .modal-price-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 14px;
+          border-radius: 20px;
+          background: rgba(59, 130, 246, 0.1);
+          border: 1px solid rgba(59, 130, 246, 0.3);
+          color: #60a5fa;
+          font-size: 0.7rem;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          margin-bottom: 18px;
+        }
+
         /* RESPONSIVE */
         @media (max-width: 480px) {
           .glass-card { padding: 40px 20px 30px 20px; border-radius: 32px; }
@@ -429,6 +683,10 @@ export default function LoginPage() {
           .custom-input { padding: 14px 18px; font-size: 0.85rem; }
           .btn-primary { padding: 16px 20px; font-size: 0.7rem; }
           .status-row { gap: 16px; flex-wrap: wrap; }
+          .modal-card { padding: 32px 20px 26px 20px; border-radius: 24px; }
+          .modal-title { font-size: 1.25rem; }
+          .modal-icon { width: 75px; height: 75px; font-size: 1.8rem; }
+          .btn-whatsapp { padding: 16px 20px; font-size: 0.75rem; }
         }
         @media (max-width: 380px) {
           .brand { font-size: 1.6rem; }
@@ -469,6 +727,7 @@ export default function LoginPage() {
             inputMode="numeric"
             value={botId}
             onChange={(e) => setBotId(e.target.value)}
+            disabled={loading}
           />
         </div>
 
@@ -482,6 +741,7 @@ export default function LoginPage() {
             placeholder="Enter your password"
             value={botPass}
             onChange={(e) => setBotPass(e.target.value)}
+            disabled={loading}
           />
         </div>
 
@@ -490,12 +750,23 @@ export default function LoginPage() {
           onClick={handleLogin}
           disabled={loading}
         >
-          <i className="fas fa-sign-in-alt" />
+          <i
+            className={`fas ${
+              loading ? "fa-spinner fa-spin" : "fa-sign-in-alt"
+            }`}
+          />
           <span>{loading ? "VERIFYING..." : "Login Now"}</span>
           {!loading && <i className="fas fa-arrow-right" />}
         </button>
 
-        <p id="errorMsg" className={error ? "show" : ""}>
+        {loading && checkingStatus && (
+          <div className="checking-status">
+            <i className="fas fa-circle-notch" />
+            {checkingStatus}
+          </div>
+        )}
+
+        <p id="errorMsg" className={error && !loading ? "show" : ""}>
           {error}
         </p>
 
@@ -528,6 +799,57 @@ export default function LoginPage() {
       <audio id="bgMusic" loop>
         <source src="https://files.catbox.moe/5zx7hg.mp3" type="audio/mpeg" />
       </audio>
+
+      {/* ========== PAID USER POPUP ========== */}
+      {showPaidPopup && (
+        <div
+          className="modal-overlay"
+          onClick={(e) => {
+            if (e.target.classList.contains("modal-overlay")) {
+              setShowPaidPopup(false);
+            }
+          }}
+        >
+          <div className="modal-card">
+            <div className="modal-icon">
+              <i className="fas fa-lock" />
+            </div>
+
+            <div className="modal-price-tag">
+              <i className="fas fa-crown" />
+              Premium Access Required
+            </div>
+
+            <h2 className="modal-title">Paid Users Only</h2>
+
+            <div className="modal-divider" />
+
+            <p className="modal-subtitle">
+              මේ dashboard එක <strong>paid users</strong> ලට විතරයි. ඔයාගේ
+              account එක තවම premium නෑ. දැන්ම upgrade කරගෙන හැම feature එකක්ම
+              unlock කරගන්න.
+            </p>
+
+            <a
+              href={WHATSAPP_BUY}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-whatsapp"
+            >
+              <i className="fab fa-whatsapp" />
+              <span>Get Paid</span>
+              <i className="fas fa-arrow-right" />
+            </a>
+
+            <button
+              className="btn-close"
+              onClick={() => setShowPaidPopup(false)}
+            >
+              Maybe later
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
