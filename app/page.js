@@ -711,7 +711,7 @@ export default function LoginPage() {
 
         <div className="brand">
           <span className="blue">ZANTA</span>
-          <span className="white">-MD</span>
+          <span className="white">-MINI</span>
         </div>
         <div className="subtitle">Dashboard Login</div>
         <div className="divider-line" />
