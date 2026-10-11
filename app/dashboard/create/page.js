@@ -425,14 +425,10 @@ export default function CreateCommand() {
     return "";
   })();
 
-  /* ======================================================
-     🔥 NEW: Live preview user bubble එකේ command + default query
-     ====================================================== */
   const previewUserMessage = (() => {
     const baseCmd = `.${cmd.command || "(no name)"}`;
 
     if (cmd.type === "API" && cmd.apiConfig.hasQuery) {
-      // පළමු query එකේ default value එක ගන්න
       const firstQuery = (cmd.apiConfig.queries || []).find(
         (q) => q && q.key && q.defaultValue
       );
@@ -507,6 +503,12 @@ export default function CreateCommand() {
     });
   })();
 
+  /* ======================================================
+     🔥 FIXED: WhatsApp preview — line breaks preserved
+     - හිස් line එකක් → <br /> (extra space)
+     - text line එකක් → formatted text
+     - හැම line එකකටම whitespace pre-wrap
+     ====================================================== */
   function renderWhatsAppPreview(text) {
     if (!text) return [];
 
@@ -514,11 +516,13 @@ export default function CreateCommand() {
     const elements = [];
 
     lines.forEach((line, i) => {
+      // 🔥 හිස් line → extra <br /> එකක් (line space එක)
       if (line === "") {
         elements.push({ type: "br", key: `br-${i}` });
         return;
       }
 
+      // 🔥 Normal line — formatting parse කරලා
       if (line.startsWith("> ")) {
         elements.push({
           type: "quote",
@@ -542,7 +546,6 @@ export default function CreateCommand() {
         type: "text",
         content: parseInlineFormat(line),
         key: `t-${i}`,
-        isLast: i === lines.length - 1,
       });
     });
 
@@ -565,32 +568,66 @@ export default function CreateCommand() {
     return out;
   }
 
+  /* ======================================================
+     🔥 FIXED: renderPreviewElements — proper line breaks
+     - text lines අතර <br /> එකක් දානවා (line space)
+     - quote / mono blocks වලට line breaks wrap
+     ====================================================== */
   function renderPreviewElements(elements) {
-    return elements.map((el, idx) => {
-      if (el.type === "br") {
-        return <br key={el.key || idx} />;
-      }
-      if (el.type === "quote") {
-        return (
-          <span key={el.key || idx} className="line-quote">
-            {el.content}
-          </span>
-        );
-      }
-      if (el.type === "mono") {
-        return (
-          <span key={el.key || idx} className="line-mono">
-            {el.content}
-          </span>
-        );
-      }
-      return (
+    const output = [];
+    let lineBuffer = [];
+
+    const flushLineBuffer = (keySuffix) => {
+      if (lineBuffer.length === 0) return;
+      output.push(
         <span
-          key={el.key || idx}
-          dangerouslySetInnerHTML={{ __html: el.content }}
+          key={`line-${keySuffix}`}
+          dangerouslySetInnerHTML={{ __html: lineBuffer.join(" ") }}
         />
       );
+      lineBuffer = [];
+    };
+
+    elements.forEach((el, idx) => {
+      const k = el.key || idx;
+
+      if (el.type === "br") {
+        // 🔥 හිස් line එකක් — line break එකක් දෙකක් (line space)
+        flushLineBuffer(`br-${k}`);
+        output.push(<br key={`br1-${k}`} />);
+        output.push(<br key={`br2-${k}`} />);
+        return;
+      }
+
+      if (el.type === "quote") {
+        flushLineBuffer(`q-${k}`);
+        output.push(
+          <span key={`quote-${k}`} className="line-quote">
+            {el.content}
+          </span>
+        );
+        output.push(<br key={`quote-br-${k}`} />);
+        return;
+      }
+
+      if (el.type === "mono") {
+        flushLineBuffer(`m-${k}`);
+        output.push(
+          <span key={`mono-${k}`} className="line-mono">
+            {el.content}
+          </span>
+        );
+        output.push(<br key={`mono-br-${k}`} />);
+        return;
+      }
+
+      // text element
+      lineBuffer.push(el.content);
     });
+
+    flushLineBuffer("end");
+
+    return output;
   }
 
   function lookupSampleValue(path) {
@@ -1760,6 +1797,7 @@ export default function CreateCommand() {
           border-top: 8px solid transparent;
         }
 
+        /* 🔥 FIXED: line-mono and line-quote — block level, proper spacing */
         .chat-bubble.bot .line-mono {
           display: block;
           background: rgba(0, 0, 0, 0.4);
@@ -1768,7 +1806,7 @@ export default function CreateCommand() {
           font-family: "SF Mono", "Consolas", monospace;
           font-size: 0.78rem;
           color: #a5f3fc;
-          margin: 3px 0;
+          margin: 4px 0;
           white-space: pre-wrap;
           word-break: break-word;
         }
@@ -1778,7 +1816,7 @@ export default function CreateCommand() {
           padding-left: 10px;
           color: rgba(255, 255, 255, 0.7);
           font-style: italic;
-          margin: 3px 0;
+          margin: 4px 0;
           white-space: pre-wrap;
         }
         .chat-bubble.bot code {
@@ -1792,10 +1830,13 @@ export default function CreateCommand() {
         .chat-bubble.bot b { font-weight: 900; color: #fff; }
         .chat-bubble.bot i { font-style: italic; }
         .chat-bubble.bot s { text-decoration: line-through; opacity: 0.7; }
+
+        /* 🔥 FIXED: chat bubble br — proper line height for empty lines */
         .chat-bubble.bot br {
           display: block;
           content: "";
-          margin-top: 4px;
+          margin: 0;
+          line-height: 1.55;
         }
 
         .chat-image-wrap {
@@ -1831,7 +1872,8 @@ export default function CreateCommand() {
         .chat-image-caption br {
           display: block;
           content: "";
-          margin-top: 4px;
+          margin: 0;
+          line-height: 1.55;
         }
         .chat-image-caption .line-mono {
           display: block;
@@ -1841,7 +1883,7 @@ export default function CreateCommand() {
           font-family: "SF Mono", "Consolas", monospace;
           font-size: 0.78rem;
           color: #a5f3fc;
-          margin: 3px 0;
+          margin: 4px 0;
           white-space: pre-wrap;
         }
         .chat-image-caption .line-quote {
@@ -1850,7 +1892,7 @@ export default function CreateCommand() {
           padding-left: 10px;
           color: rgba(255, 255, 255, 0.7);
           font-style: italic;
-          margin: 3px 0;
+          margin: 4px 0;
         }
 
         .chat-time {
@@ -2802,7 +2844,6 @@ export default function CreateCommand() {
                 Live Preview
               </label>
               <div className="chat-window">
-                {/* 🔥 FIX: preview user bubble shows .command + default query */}
                 <div className="chat-bubble user">
                   {previewUserMessage}
                 </div>
@@ -2834,13 +2875,9 @@ export default function CreateCommand() {
                         )}
                         {cmd.textConfig.caption && (
                           <div className="chat-image-caption">
-                            <span
-                              dangerouslySetInnerHTML={{
-                                __html: parseInlineFormat(
-                                  cmd.textConfig.caption
-                                ),
-                              }}
-                            />
+                            {renderPreviewElements(
+                              renderWhatsAppPreview(cmd.textConfig.caption)
+                            )}
                           </div>
                         )}
                       </div>
@@ -2925,13 +2962,9 @@ export default function CreateCommand() {
                         </div>
                         {cmd.textConfig.caption && (
                           <div className="chat-image-caption">
-                            <span
-                              dangerouslySetInnerHTML={{
-                                __html: parseInlineFormat(
-                                  cmd.textConfig.caption
-                                ),
-                              }}
-                            />
+                            {renderPreviewElements(
+                              renderWhatsAppPreview(cmd.textConfig.caption)
+                            )}
                           </div>
                         )}
                       </div>
