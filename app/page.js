@@ -826,7 +826,7 @@ export default function LoginPage() {
 
             <p className="modal-subtitle">
               මේ dashboard එක <strong>paid users</strong> ලට විතරයි.
-              Only For PAID Users.
+              (Only For PAID Users)
             </p>
 
             <a
