@@ -573,34 +573,20 @@ export default function CreateCommand() {
      - text lines අතර <br /> එකක් දානවා (line space)
      - quote / mono blocks වලට line breaks wrap
      ====================================================== */
-  function renderPreviewElements(elements) {
+ function renderPreviewElements(elements) {
     const output = [];
-    let lineBuffer = [];
-
-    const flushLineBuffer = (keySuffix) => {
-      if (lineBuffer.length === 0) return;
-      output.push(
-        <span
-          key={`line-${keySuffix}`}
-          dangerouslySetInnerHTML={{ __html: lineBuffer.join(" ") }}
-        />
-      );
-      lineBuffer = [];
-    };
 
     elements.forEach((el, idx) => {
       const k = el.key || idx;
 
+      // හිස් line → එක <br /> එකක් (line space)
       if (el.type === "br") {
-        // 🔥 හිස් line එකක් — line break එකක් දෙකක් (line space)
-        flushLineBuffer(`br-${k}`);
-        output.push(<br key={`br1-${k}`} />);
-        output.push(<br key={`br2-${k}`} />);
+        output.push(<br key={`br-${k}`} />);
         return;
       }
 
+      // Quote block
       if (el.type === "quote") {
-        flushLineBuffer(`q-${k}`);
         output.push(
           <span key={`quote-${k}`} className="line-quote">
             {el.content}
@@ -610,8 +596,8 @@ export default function CreateCommand() {
         return;
       }
 
+      // Mono block
       if (el.type === "mono") {
-        flushLineBuffer(`m-${k}`);
         output.push(
           <span key={`mono-${k}`} className="line-mono">
             {el.content}
@@ -621,14 +607,29 @@ export default function CreateCommand() {
         return;
       }
 
-      // text element
-      lineBuffer.push(el.content);
+      // Text line → formatted content + <br /> එකක්
+      output.push(
+        <span
+          key={`text-${k}`}
+          dangerouslySetInnerHTML={{ __html: el.content }}
+        />
+      );
+      output.push(<br key={`text-br-${k}`} />);
     });
 
-    flushLineBuffer("end");
+    // අන්තිමට තියෙන අමතර <br /> එක අයින් කරන්න
+    // (නැත්නම් bubble එකේ පහළින් අමතර line space එකක් එනවා)
+    if (
+      output.length > 0 &&
+      output[output.length - 1] &&
+      output[output.length - 1].type === "br"
+    ) {
+      output.pop();
+    }
 
     return output;
   }
+
 
   function lookupSampleValue(path) {
     if (!apiResult?.ok) return "";
