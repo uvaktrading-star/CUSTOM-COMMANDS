@@ -825,9 +825,8 @@ export default function LoginPage() {
             <div className="modal-divider" />
 
             <p className="modal-subtitle">
-              මේ dashboard එක <strong>paid users</strong> ලට විතරයි. ඔයාගේ
-              account එක තවම premium නෑ. දැන්ම upgrade කරගෙන හැම feature එකක්ම
-              unlock කරගන්න.
+              මේ dashboard එක <strong>paid users</strong> ලට විතරයි.
+              Only For PAID Users.
             </p>
 
             <a
