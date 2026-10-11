@@ -14,7 +14,7 @@ export default function DashboardLayout({ children }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  /* ---------- auth guard ---------- */
+  /* ---------- auth guard + load botName ---------- */
   useEffect(() => {
     const token = localStorage.getItem("bot_id");
     const raw = localStorage.getItem("bot_settings");
@@ -31,9 +31,17 @@ export default function DashboardLayout({ children }) {
       settings = {};
     }
 
+    // 🔥 botName priority: settings.botName → settings.name → "ᴢᴀɴᴛᴀ-ᴍɪɴɪ"
+    const botName =
+      settings?.botName ||
+      settings?.name ||
+      "ᴢᴀɴᴛᴀ-ᴍɪɴɪ";
+
     setUser({
       id: token,
-      name: settings?.name || settings?.botName || "Bot User",
+      name: botName,
+      ownerName: settings?.ownerName || "",
+      botImage: settings?.botImage || "https://www.zanta-mini.store/src/zanta.png",
     });
     setReady(true);
   }, [router]);
@@ -203,43 +211,70 @@ export default function DashboardLayout({ children }) {
           100% { transform: translate(-80px, 80px) scale(1.3); }
         }
 
-        /* ---------- NAVBAR ---------- */
-        .dash-navbar {
+        /* ======================================================
+           🎨 NEW NAVBAR — floating, rounded, glass
+           ====================================================== */
+        .dash-navbar-wrap {
           position: sticky;
           top: 0;
           z-index: 100;
-          background: rgba(8, 15, 30, 0.7);
-          backdrop-filter: blur(22px);
-          -webkit-backdrop-filter: blur(22px);
-          border-bottom: 1px solid rgba(0, 150, 255, 0.12);
+          padding: 14px 20px 0 20px;
+        }
+
+        .dash-navbar {
+          max-width: 1300px;
+          margin: 0 auto;
+          background: rgba(8, 15, 30, 0.72);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
+          border: 1px solid rgba(0, 150, 255, 0.15);
+          border-radius: 22px;
+          box-shadow:
+            0 10px 40px rgba(0, 0, 0, 0.5),
+            0 0 40px rgba(59, 130, 246, 0.06),
+            inset 0 1px 0 rgba(255, 255, 255, 0.04);
+          transition: all 0.3s ease;
+        }
+        .dash-navbar:hover {
+          border-color: rgba(0, 180, 255, 0.25);
+          box-shadow:
+            0 12px 50px rgba(0, 0, 0, 0.6),
+            0 0 50px rgba(59, 130, 246, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
 
         .dash-nav-inner {
-          max-width: 1300px;
-          margin: 0 auto;
-          padding: 14px 24px;
+          padding: 12px 18px;
           display: flex;
           align-items: center;
-          gap: 20px;
+          gap: 16px;
         }
 
-        /* Brand */
+        /* ---------- Brand ---------- */
         .dash-brand {
           display: flex;
           align-items: center;
           gap: 12px;
           text-decoration: none;
           flex-shrink: 0;
+          padding: 4px 8px 4px 4px;
+          border-radius: 16px;
+          transition: all 0.25s ease;
         }
+        .dash-brand:hover {
+          background: rgba(59, 130, 246, 0.06);
+        }
+
         .dash-brand-logo {
-          width: 38px;
-          height: 38px;
-          border-radius: 50%;
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
           overflow: hidden;
-          border: 2px solid rgba(0, 150, 255, 0.4);
-          box-shadow: 0 0 20px rgba(0, 150, 255, 0.2);
+          border: 1.5px solid rgba(0, 150, 255, 0.35);
+          box-shadow: 0 0 20px rgba(0, 150, 255, 0.15);
           flex-shrink: 0;
           position: relative;
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(6, 182, 212, 0.1));
         }
         .dash-brand-logo img {
           width: 100%;
@@ -247,53 +282,41 @@ export default function DashboardLayout({ children }) {
           object-fit: cover;
           display: block;
         }
-        .dash-brand-logo::before {
-          content: "";
-          position: absolute;
-          inset: -3px;
-          border-radius: 50%;
-          background: conic-gradient(from 0deg, transparent, #3b82f6, transparent, #06b6d4, transparent);
-          z-index: -1;
-          animation: dashSpinRing 4s linear infinite;
-          opacity: 0.6;
-        }
-        @keyframes dashSpinRing {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
 
         .dash-brand-text {
           display: flex;
           flex-direction: column;
           line-height: 1;
+          min-width: 0;
+          max-width: 220px;
         }
         .dash-brand-name {
-          font-size: 1.05rem;
+          font-size: 1rem;
           font-weight: 900;
-          letter-spacing: -0.3px;
+          letter-spacing: -0.2px;
+          color: #fff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
-        .dash-brand-name .blue {
-          background: linear-gradient(135deg, #3b82f6, #06b6d4);
-          -webkit-background-clip: text;
-          background-clip: text;
-          color: transparent;
-        }
-        .dash-brand-name .white { color: #fff; }
         .dash-brand-sub {
           font-size: 0.55rem;
           font-weight: 500;
-          color: rgba(255, 255, 255, 0.3);
-          letter-spacing: 2px;
+          color: rgba(255, 255, 255, 0.35);
+          letter-spacing: 2.5px;
           text-transform: uppercase;
-          margin-top: 2px;
+          margin-top: 3px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
-        /* Nav links */
+        /* ---------- Nav links ---------- */
         .dash-nav-links {
           display: flex;
           align-items: center;
-          gap: 6px;
-          margin-left: 20px;
+          gap: 4px;
+          margin-left: 12px;
           flex: 1;
         }
         .dash-nav-link {
@@ -318,12 +341,12 @@ export default function DashboardLayout({ children }) {
         }
         .dash-nav-link.active {
           color: #fff;
-          background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(6, 182, 212, 0.15));
-          border-color: rgba(59, 130, 246, 0.3);
-          box-shadow: 0 4px 15px rgba(59, 130, 246, 0.15);
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.22), rgba(6, 182, 212, 0.15));
+          border-color: rgba(59, 130, 246, 0.35);
+          box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2);
         }
 
-        /* Right side */
+        /* ---------- Right side ---------- */
         .dash-nav-right {
           display: flex;
           align-items: center;
@@ -331,145 +354,239 @@ export default function DashboardLayout({ children }) {
           margin-left: auto;
         }
 
-        .user-menu-wrap {
+        /* ---------- 3-dot Menu Button ---------- */
+        .menu-btn-wrap {
           position: relative;
         }
-        .user-chip {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 6px 14px 6px 6px;
-          border-radius: 30px;
-          background: rgba(0, 0, 0, 0.3);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          cursor: pointer;
-          transition: all 0.2s ease;
-          font-family: inherit;
+        .menu-btn {
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
+          background: rgba(0, 0, 0, 0.35);
+          border: 1px solid rgba(255, 255, 255, 0.08);
           color: #fff;
+          font-size: 1rem;
+          cursor: pointer;
+          display: grid;
+          place-items: center;
+          transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          position: relative;
+          overflow: hidden;
         }
-        .user-chip:hover {
-          border-color: rgba(59, 130, 246, 0.3);
-          background: rgba(59, 130, 246, 0.08);
+        .menu-btn::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(6, 182, 212, 0.15));
+          opacity: 0;
+          transition: opacity 0.25s ease;
+        }
+        .menu-btn:hover {
+          border-color: rgba(59, 130, 246, 0.45);
+          transform: translateY(-1px);
+          box-shadow: 0 8px 20px rgba(59, 130, 246, 0.2);
+        }
+        .menu-btn:hover::before {
+          opacity: 1;
+        }
+        .menu-btn.open {
+          border-color: rgba(59, 130, 246, 0.6);
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(6, 182, 212, 0.15));
+          box-shadow: 0 0 25px rgba(59, 130, 246, 0.35);
+        }
+        .menu-btn i {
+          position: relative;
+          z-index: 1;
+          transition: transform 0.3s ease;
+        }
+        .menu-btn.open i {
+          transform: rotate(90deg);
         }
 
-        .user-avatar {
-          width: 32px;
-          height: 32px;
+        /* Dot pulse indicator */
+        .menu-btn::after {
+          content: "";
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          width: 7px;
+          height: 7px;
           border-radius: 50%;
+          background: #22c55e;
+          box-shadow: 0 0 10px #22c55e;
+          animation: menuDotPulse 2s ease-in-out infinite;
+        }
+        @keyframes menuDotPulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(0.85); }
+        }
+
+        /* ---------- User dropdown ---------- */
+        .user-dropdown {
+          position: absolute;
+          top: calc(100% + 12px);
+          right: 0;
+          min-width: 260px;
+          background: rgba(12, 18, 32, 0.96);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
+          border: 1px solid rgba(0, 150, 255, 0.18);
+          border-radius: 18px;
+          padding: 10px;
+          box-shadow:
+            0 25px 60px rgba(0, 0, 0, 0.7),
+            0 0 40px rgba(59, 130, 246, 0.08);
+          opacity: 0;
+          visibility: hidden;
+          transform: translateY(-8px) scale(0.97);
+          transform-origin: top right;
+          transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .user-dropdown.open {
+          opacity: 1;
+          visibility: visible;
+          transform: translateY(0) scale(1);
+        }
+
+        /* Dropdown user card */
+        .dropdown-user-card {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 14px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(6, 182, 212, 0.08));
+          border: 1px solid rgba(59, 130, 246, 0.2);
+          margin-bottom: 8px;
+        }
+        .dropdown-avatar {
+          width: 44px;
+          height: 44px;
+          border-radius: 14px;
           background: linear-gradient(135deg, #3b82f6, #06b6d4);
           display: grid;
           place-items: center;
           color: #000;
           font-weight: 900;
-          font-size: 0.85rem;
+          font-size: 1.1rem;
           flex-shrink: 0;
+          box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
         }
-        .user-chip-info {
-          display: flex;
-          flex-direction: column;
-          line-height: 1;
-          text-align: left;
+        .dropdown-user-info {
+          min-width: 0;
+          flex: 1;
         }
-        .user-chip-name {
-          font-size: 0.78rem;
-          font-weight: 700;
+        .dropdown-user-name {
+          font-size: 0.9rem;
+          font-weight: 800;
           color: #fff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
-        .user-chip-id {
-          font-size: 0.62rem;
-          color: rgba(255, 255, 255, 0.4);
-          margin-top: 2px;
-        }
-        .user-chip > i {
-          font-size: 0.65rem;
-          color: rgba(255, 255, 255, 0.3);
-          margin-left: 4px;
-          transition: transform 0.2s ease;
-        }
-        .user-chip.open > i {
-          transform: rotate(180deg);
-        }
-
-        /* User dropdown */
-        .user-dropdown {
-          position: absolute;
-          top: calc(100% + 10px);
-          right: 0;
-          min-width: 220px;
-          background: rgba(12, 18, 32, 0.95);
-          backdrop-filter: blur(22px);
-          -webkit-backdrop-filter: blur(22px);
-          border: 1px solid rgba(0, 150, 255, 0.15);
-          border-radius: 16px;
-          padding: 8px;
-          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-          opacity: 0;
-          visibility: hidden;
-          transform: translateY(-6px);
-          transition: all 0.2s ease;
-        }
-        .user-dropdown.open {
-          opacity: 1;
-          visibility: visible;
-          transform: translateY(0);
-        }
-
-        .dropdown-header {
-          padding: 12px 14px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-          margin-bottom: 6px;
-        }
-        .dropdown-header .name {
-          font-size: 0.85rem;
-          font-weight: 700;
-          color: #fff;
-        }
-        .dropdown-header .id {
+        .dropdown-user-id {
           font-size: 0.7rem;
-          color: rgba(255, 255, 255, 0.4);
-          margin-top: 2px;
+          color: rgba(255, 255, 255, 0.45);
+          margin-top: 3px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          font-family: "SF Mono", "Consolas", monospace;
         }
 
+        /* Premium badge */
+        .dropdown-premium-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 3px 8px;
+          border-radius: 20px;
+          background: linear-gradient(135deg, #fbbf24, #f59e0b);
+          color: #000;
+          font-size: 0.55rem;
+          font-weight: 900;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          margin-top: 4px;
+          width: fit-content;
+        }
+
+        /* Section label */
+        .dropdown-section-label {
+          font-size: 0.6rem;
+          font-weight: 700;
+          color: rgba(255, 255, 255, 0.3);
+          letter-spacing: 1.5px;
+          text-transform: uppercase;
+          padding: 8px 14px 6px;
+        }
+
+        /* Items */
         .dropdown-item {
           display: flex;
           align-items: center;
-          gap: 10px;
-          padding: 10px 14px;
-          border-radius: 10px;
-          font-size: 0.82rem;
-          font-weight: 500;
-          color: rgba(255, 255, 255, 0.7);
+          gap: 12px;
+          padding: 11px 14px;
+          border-radius: 12px;
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.75);
           text-decoration: none;
           background: none;
           border: none;
           width: 100%;
           text-align: left;
           cursor: pointer;
-          transition: all 0.15s ease;
+          transition: all 0.18s ease;
           font-family: inherit;
         }
         .dropdown-item:hover {
           background: rgba(59, 130, 246, 0.1);
           color: #fff;
+          transform: translateX(2px);
+        }
+        .dropdown-item i {
+          width: 18px;
+          text-align: center;
+          font-size: 0.85rem;
+          color: rgba(255, 255, 255, 0.5);
+          transition: color 0.18s ease;
+        }
+        .dropdown-item:hover i {
+          color: #60a5fa;
+        }
+
+        /* Logout — special styling */
+        .dropdown-logout {
+          margin-top: 6px;
+          padding-top: 6px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
         }
         .dropdown-item.danger {
           color: #f87171;
+          background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.03));
+          border: 1px solid rgba(239, 68, 68, 0.15);
+          margin-top: 4px;
         }
         .dropdown-item.danger:hover {
-          background: rgba(239, 68, 68, 0.1);
+          background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+          color: #fca5a5;
+          border-color: rgba(239, 68, 68, 0.3);
+          box-shadow: 0 4px 20px rgba(239, 68, 68, 0.15);
+        }
+        .dropdown-item.danger i {
+          color: #f87171;
+        }
+        .dropdown-item.danger:hover i {
           color: #fca5a5;
         }
-        .dropdown-item i {
-          width: 16px;
-          text-align: center;
-        }
 
-        /* Mobile toggle */
+        /* Mobile menu toggle (for nav links only) */
         .mobile-toggle {
           display: none;
-          width: 40px;
-          height: 40px;
-          border-radius: 12px;
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
           background: rgba(0, 0, 0, 0.3);
           border: 1px solid rgba(255, 255, 255, 0.06);
           color: #fff;
@@ -490,31 +607,38 @@ export default function DashboardLayout({ children }) {
 
         /* ---------- MOBILE ---------- */
         @media (max-width: 768px) {
-          .dash-nav-inner {
-            padding: 12px 16px;
-            gap: 12px;
+          .dash-navbar-wrap {
+            padding: 12px 12px 0 12px;
           }
+          .dash-nav-inner {
+            padding: 10px 14px;
+            gap: 10px;
+          }
+          .dash-brand-name { max-width: 140px; font-size: 0.9rem; }
           .dash-brand-sub { display: none; }
+          .dash-brand-logo { width: 38px; height: 38px; border-radius: 12px; }
 
           .mobile-toggle { display: flex; }
 
           .dash-nav-links {
             position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
+            top: calc(100% + 8px);
+            left: 12px;
+            right: 12px;
             flex-direction: column;
             align-items: stretch;
             margin: 0;
-            padding: 12px 16px 16px 16px;
+            padding: 10px;
             gap: 4px;
             background: rgba(8, 15, 30, 0.98);
             backdrop-filter: blur(22px);
-            border-bottom: 1px solid rgba(0, 150, 255, 0.15);
+            border: 1px solid rgba(0, 150, 255, 0.18);
+            border-radius: 18px;
             transform: translateY(-10px);
             opacity: 0;
             visibility: hidden;
             transition: all 0.25s ease;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
           }
           .dash-nav-links.open {
             transform: translateY(0);
@@ -526,13 +650,18 @@ export default function DashboardLayout({ children }) {
             border-radius: 12px;
           }
 
-          .user-chip-info { display: none; }
-          .user-chip { padding: 6px; }
-          .user-chip > i { display: none; }
-
           .dash-main {
             padding: 20px 16px 60px 16px;
           }
+
+          .user-dropdown {
+            min-width: 240px;
+            right: -4px;
+          }
+        }
+
+        @media (max-width: 400px) {
+          .dash-brand-name { max-width: 100px; font-size: 0.82rem; }
         }
 
         /* ---------- BUTTONS (shared) ---------- */
@@ -584,132 +713,146 @@ export default function DashboardLayout({ children }) {
         <div className="dash-blob" />
         <div className="dash-blob-2" />
 
-        {/* ========== NAVBAR ========== */}
-        <nav className="dash-navbar">
-          <div className="dash-nav-inner">
-            {/* Brand */}
-            <Link href="/dashboard" className="dash-brand">
-              <div className="dash-brand-logo">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="https://www.zanta-mini.store/src/zanta.png"
-                  alt="ZANTA"
-                />
-              </div>
-              <div className="dash-brand-text">
-                <div className="dash-brand-name">
-                  <span className="blue">ZANTA</span>
-                  <span className="white">-MD</span>
-                </div>
-                <div className="dash-brand-sub">Bot Manager</div>
-              </div>
-            </Link>
-
-            {/* Desktop links + mobile dropdown */}
-            <div
-              className={`dash-nav-links ${
-                mobileMenuOpen ? "open" : ""
-              }`}
-            >
-              {navItems.map((item) => {
-                const active = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`dash-nav-link ${active ? "active" : ""}`}
-                  >
-                    <i className={`fas ${item.icon}`} />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-
-            {/* Right */}
-            <div className="dash-nav-right">
-              {/* Mobile menu button */}
-              <button
-                className="mobile-toggle"
-                onClick={() => setMobileMenuOpen((v) => !v)}
-                aria-label="Toggle menu"
-              >
-                <i
-                  className={`fas ${
-                    mobileMenuOpen ? "fa-times" : "fa-bars"
-                  }`}
-                />
-              </button>
-
-              {/* User menu */}
-              <div className="user-menu-wrap">
-                <button
-                  className={`user-chip ${
-                    userMenuOpen ? "open" : ""
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setUserMenuOpen((v) => !v);
-                  }}
-                >
-                  <div className="user-avatar">
-                    {(user.name || "U")[0].toUpperCase()}
-                  </div>
-                  <div className="user-chip-info">
-                    <div className="user-chip-name">{user.name}</div>
-                    <div className="user-chip-id">{user.id}</div>
-                  </div>
-                  <i className="fas fa-chevron-down" />
-                </button>
-
-                <div
-                  className={`user-dropdown ${
-                    userMenuOpen ? "open" : ""
-                  }`}
-                >
-                  <div className="dropdown-header">
-                    <div className="name">{user.name}</div>
-                    <div className="id">{user.id}</div>
-                  </div>
-
-                  <Link
-                    href="/dashboard"
-                    className="dropdown-item"
-                    onClick={() => setUserMenuOpen(false)}
-                  >
-                    <i className="fas fa-layer-group" />
-                    My Commands
-                  </Link>
-
-                  <Link
-                    href="/dashboard/create"
-                    className="dropdown-item"
-                    onClick={() => setUserMenuOpen(false)}
-                  >
-                    <i className="fas fa-plus" />
-                    Create Command
-                  </Link>
-
-                  <div
-                    style={{
-                      height: 1,
-                      background: "rgba(255,255,255,0.06)",
-                      margin: "6px 4px",
+        {/* ========== NAVBAR (floating, rounded) ========== */}
+        <div className="dash-navbar-wrap">
+          <nav className="dash-navbar">
+            <div className="dash-nav-inner">
+              {/* Brand — botName from settings */}
+              <Link href="/dashboard" className="dash-brand">
+                <div className="dash-brand-logo">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={user.botImage}
+                    alt="Bot"
+                    onError={(e) => {
+                      e.target.src =
+                        "https://www.zanta-mini.store/src/zanta.png";
                     }}
                   />
+                </div>
+                <div className="dash-brand-text">
+                  <div className="dash-brand-name">{user.name}</div>
+                  <div className="dash-brand-sub">Bot Manager</div>
+                </div>
+              </Link>
 
+              {/* Nav links */}
+              <div
+                className={`dash-nav-links ${
+                  mobileMenuOpen ? "open" : ""
+                }`}
+              >
+                {navItems.map((item) => {
+                  const active = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`dash-nav-link ${active ? "active" : ""}`}
+                    >
+                      <i className={`fas ${item.icon}`} />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+
+              {/* Right */}
+              <div className="dash-nav-right">
+                {/* Mobile menu button */}
+                <button
+                  className="mobile-toggle"
+                  onClick={() => setMobileMenuOpen((v) => !v)}
+                  aria-label="Toggle navigation"
+                >
+                  <i
+                    className={`fas ${
+                      mobileMenuOpen ? "fa-times" : "fa-bars"
+                    }`}
+                  />
+                </button>
+
+                {/* 3-dot Menu */}
+                <div className="user-menu-wrap menu-btn-wrap">
                   <button
-                    className="dropdown-item danger"
-                    onClick={logout}
+                    className={`menu-btn ${
+                      userMenuOpen ? "open" : ""
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setUserMenuOpen((v) => !v);
+                    }}
+                    aria-label="Menu"
                   >
-                    <i className="fas fa-sign-out-alt" />
-                    Logout
+                    <i className="fas fa-ellipsis-v" />
                   </button>
+
+                  <div
+                    className={`user-dropdown ${
+                      userMenuOpen ? "open" : ""
+                    }`}
+                  >
+                    {/* User card */}
+                    <div className="dropdown-user-card">
+                      <div className="dropdown-avatar">
+                        {(user.name || "U")[0].toUpperCase()}
+                      </div>
+                      <div className="dropdown-user-info">
+                        <div className="dropdown-user-name">
+                          {user.name}
+                        </div>
+                        <div className="dropdown-user-id">
+                          {user.id}
+                        </div>
+                        <div className="dropdown-premium-badge">
+                          <i
+                            className="fas fa-crown"
+                            style={{ fontSize: "0.5rem" }}
+                          />
+                          Premium
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Nav section */}
+                    <div className="dropdown-section-label">
+                      Navigation
+                    </div>
+
+                    <Link
+                      href="/dashboard"
+                      className="dropdown-item"
+                      onClick={() => setUserMenuOpen(false)}
+                    >
+                      <i className="fas fa-layer-group" />
+                      My Commands
+                    </Link>
+
+                    <Link
+                      href="/dashboard/create"
+                      className="dropdown-item"
+                      onClick={() => setUserMenuOpen(false)}
+                    >
+                      <i className="fas fa-plus" />
+                      Create Command
+                    </Link>
+
+                    {/* Logout section */}
+                    <div className="dropdown-logout">
+                      <button
+                        className="dropdown-item danger"
+                        onClick={logout}
+                      >
+                        <i className="fas fa-sign-out-alt" />
+                        Logout
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </nav>
+          </nav>
+        </div>
 
         {/* ========== MAIN ========== */}
         <main className="dash-main">{children}</main>
