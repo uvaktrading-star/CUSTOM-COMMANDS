@@ -8,23 +8,23 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "ZANTA-MD | Login",
-  description: "The Powerful WhatsApp bot.",
+  title: "ZANTA-MINI | Commands",
+  description: "ZANTA MINI Custom Commands Creator Tool.",
   icons: {
     icon: "/favicon.ico",
   },
   openGraph: {
     type: "website",
-    url: "https://www.zanta-mini.store",
-    title: "ZANTA MINI LOGIN",
+    url: "https://www.commands.zanta-mini.store",
+    title: "ZANTA MINI COMMANDS",
     description: "The Powerful WhatsApp bot.",
-    images: ["https://www.zanta-mini.store/src/anime-boy-dark-hair-casual-look-desktop-wallpaper-cover.jpg"],
+    images: ["/og.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "ZANTA MINI",
-    description: "The Powerful WhatsApp bot.",
-    images: ["https://www.zanta-mini.store/zanta.png"],
+    description: "ZANTA MINI Custom Commands Creator Tool.",
+    images: ["/og.png"],
   },
 };
 
