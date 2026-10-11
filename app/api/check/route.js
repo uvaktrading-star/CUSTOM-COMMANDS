@@ -1,59 +1,5 @@
 import { NextResponse } from "next/server";
-import mongoose from "mongoose";
-
-/* ======================================================
-   🔌 MongoDB Connection (cached for serverless)
-   ====================================================== */
-const MONGODB_URI =
-  process.env.MAIN_MONGODB_URI ||
-  "mongodb+srv://zanta-user-settings:Akashkavindu12345@zanta-user-settings.gl5fqgn.mongodb.net/test?retryWrites=true&w=majority&appName=zanta-user-settings";
-
-let cached = global._mongooseCache;
-if (!cached) {
-  cached = global._mongooseCache = { conn: null, promise: null };
-}
-
-async function connectDB() {
-  if (cached.conn) return cached.conn;
-
-  if (!cached.promise) {
-    cached.promise = mongoose
-      .connect(MONGODB_URI, {
-        bufferCommands: false,
-        serverSelectionTimeoutMS: 8000,
-      })
-      .then((m) => m);
-  }
-
-  try {
-    cached.conn = await cached.promise;
-  } catch (e) {
-    cached.promise = null;
-    throw e;
-  }
-
-  return cached.conn;
-}
-
-/* ======================================================
-   📄 Settings Schema
-   ====================================================== */
-const SettingsSchema = new mongoose.Schema(
-  {
-    id: { type: String, required: true, unique: true },
-    password: { type: String, default: "not_set" },
-    botName: { type: String, default: null },
-    ownerName: { type: String, default: null },
-    prefix: { type: String, default: "." },
-    workType: { type: String, default: "public" },
-    botImage: { type: String, default: "null" },
-    paymentStatus: { type: String, default: "free" },
-  },
-  { strict: false, timestamps: true, collection: "settings" }
-);
-
-const Settings =
-  mongoose.models.Settings || mongoose.model("Settings", SettingsSchema);
+import { getSettingsModel } from "@/lib/db";
 
 function cleanNumber(n) {
   return String(n || "").replace(/\D/g, "");
@@ -61,7 +7,6 @@ function cleanNumber(n) {
 
 export async function POST(req) {
   try {
-    /* ---------- Parse body ---------- */
     let body;
     try {
       body = await req.json();
@@ -82,10 +27,9 @@ export async function POST(req) {
       );
     }
 
-    /* ---------- Connect DB ---------- */
-    await connectDB();
+    /* 🔥 Settings Model — Cluster 1 එකෙන් */
+    const Settings = await getSettingsModel();
 
-    /* ---------- Find user ---------- */
     const user = await Settings.findOne({ id }).lean();
 
     if (!user) {
@@ -95,7 +39,6 @@ export async function POST(req) {
       );
     }
 
-    /* ---------- Check password ---------- */
     if (String(user.password || "") !== password) {
       return NextResponse.json(
         { success: false, paid: false, error: "Invalid password" },
@@ -103,7 +46,6 @@ export async function POST(req) {
       );
     }
 
-    /* ---------- Payment check ---------- */
     const status = String(user.paymentStatus || "free").toLowerCase();
     const PAID_STATUSES = ["paid", "premium", "pro", "active"];
     const isPaid = PAID_STATUSES.includes(status);
@@ -121,7 +63,6 @@ export async function POST(req) {
       );
     }
 
-    /* ---------- Success ---------- */
     const { password: _pw, __v, _id, ...safeSettings } = user;
 
     return NextResponse.json({
