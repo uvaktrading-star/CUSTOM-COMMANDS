@@ -11,7 +11,6 @@ export default function DashboardLayout({ children }) {
 
   const [user, setUser] = useState(null);
   const [ready, setReady] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   /* ---------- auth guard + load botName ---------- */
@@ -65,9 +64,8 @@ export default function DashboardLayout({ children }) {
     }
   }, []);
 
-  /* ---------- close menus on route change ---------- */
+  /* ---------- close menu on route change ---------- */
   useEffect(() => {
-    setMobileMenuOpen(false);
     setUserMenuOpen(false);
   }, [pathname]);
 
@@ -555,6 +553,14 @@ export default function DashboardLayout({ children }) {
         .dropdown-item:hover i {
           color: #60a5fa;
         }
+        .dropdown-item.active {
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(6, 182, 212, 0.12));
+          color: #fff;
+          border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        .dropdown-item.active i {
+          color: #60a5fa;
+        }
 
         /* Logout — special styling */
         .dropdown-logout {
@@ -581,21 +587,6 @@ export default function DashboardLayout({ children }) {
           color: #fca5a5;
         }
 
-        /* Mobile menu toggle (for nav links only) */
-        .mobile-toggle {
-          display: none;
-          width: 42px;
-          height: 42px;
-          border-radius: 14px;
-          background: rgba(0, 0, 0, 0.3);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          color: #fff;
-          font-size: 1rem;
-          cursor: pointer;
-          align-items: center;
-          justify-content: center;
-        }
-
         /* ---------- MAIN CONTENT ---------- */
         .dash-main {
           position: relative;
@@ -618,37 +609,8 @@ export default function DashboardLayout({ children }) {
           .dash-brand-sub { display: none; }
           .dash-brand-logo { width: 38px; height: 38px; border-radius: 12px; }
 
-          .mobile-toggle { display: flex; }
-
-          .dash-nav-links {
-            position: absolute;
-            top: calc(100% + 8px);
-            left: 12px;
-            right: 12px;
-            flex-direction: column;
-            align-items: stretch;
-            margin: 0;
-            padding: 10px;
-            gap: 4px;
-            background: rgba(8, 15, 30, 0.98);
-            backdrop-filter: blur(22px);
-            border: 1px solid rgba(0, 150, 255, 0.18);
-            border-radius: 18px;
-            transform: translateY(-10px);
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.25s ease;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-          }
-          .dash-nav-links.open {
-            transform: translateY(0);
-            opacity: 1;
-            visibility: visible;
-          }
-          .dash-nav-link {
-            padding: 12px 16px;
-            border-radius: 12px;
-          }
+          /* Hide desktop nav links on mobile (they move into dropdown) */
+          .dash-nav-links { display: none; }
 
           .dash-main {
             padding: 20px 16px 60px 16px;
@@ -736,12 +698,8 @@ export default function DashboardLayout({ children }) {
                 </div>
               </Link>
 
-              {/* Nav links */}
-              <div
-                className={`dash-nav-links ${
-                  mobileMenuOpen ? "open" : ""
-                }`}
-              >
+              {/* Nav links (desktop only) */}
+              <div className="dash-nav-links">
                 {navItems.map((item) => {
                   const active = pathname === item.href;
                   return (
@@ -757,22 +715,8 @@ export default function DashboardLayout({ children }) {
                 })}
               </div>
 
-              {/* Right */}
+              {/* Right — 3-dot Menu only */}
               <div className="dash-nav-right">
-                {/* Mobile menu button */}
-                <button
-                  className="mobile-toggle"
-                  onClick={() => setMobileMenuOpen((v) => !v)}
-                  aria-label="Toggle navigation"
-                >
-                  <i
-                    className={`fas ${
-                      mobileMenuOpen ? "fa-times" : "fa-bars"
-                    }`}
-                  />
-                </button>
-
-                {/* 3-dot Menu */}
                 <div className="user-menu-wrap menu-btn-wrap">
                   <button
                     className={`menu-btn ${
@@ -819,23 +763,22 @@ export default function DashboardLayout({ children }) {
                       Navigation
                     </div>
 
-                    <Link
-                      href="/dashboard"
-                      className="dropdown-item"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      <i className="fas fa-layer-group" />
-                      My Commands
-                    </Link>
-
-                    <Link
-                      href="/dashboard/create"
-                      className="dropdown-item"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      <i className="fas fa-plus" />
-                      Create Command
-                    </Link>
+                    {navItems.map((item) => {
+                      const active = pathname === item.href;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={`dropdown-item ${
+                            active ? "active" : ""
+                          }`}
+                          onClick={() => setUserMenuOpen(false)}
+                        >
+                          <i className={`fas ${item.icon}`} />
+                          {item.label}
+                        </Link>
+                      );
+                    })}
 
                     {/* Logout section */}
                     <div className="dropdown-logout">
